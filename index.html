@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INNODEP HR Index</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><img src="./innodep_logo_white.svg" alt="INNODEP"></div>
+      <div class="nav-title">WORKSPACE</div>
+      <div class="nav-item active"><span class="nav-icon">▦</span>HR 인덱스</div>
+      <div class="nav-item"><span class="nav-icon">◎</span>조직 현황</div>
+      <div class="nav-item"><span class="nav-icon">◇</span>보상 분석</div>
+      <div class="nav-item"><span class="nav-icon">◷</span>근속 분석</div>
+      <div class="source-badge"><strong>데이터 소스</strong><br>innodep_hr_dummy_200.json<br><span id="sourceStatus">불러오는 중...</span></div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div><h1>HR Index DashBoard</h1><p class="subtitle">인력 구성과 보상, 근속 현황을 한눈에 확인합니다.</p></div>
+        <div class="updated" id="updatedAt">데이터 기준 · 로컬 JSON</div>
+      </header>
+
+      <section class="filters card" id="filterArea" hidden>
+        <select id="deptFilter" aria-label="부서 필터"><option value="">전체 부서</option></select>
+        <select id="gradeFilter" aria-label="직급 필터"><option value="">전체 직급</option></select>
+        <select id="genderFilter" aria-label="성별 필터"><option value="">전체 성별</option></select>
+        <input class="search" id="searchInput" type="search" placeholder="이름, 부서, 직책 검색" aria-label="검색">
+        <button class="reset" id="resetBtn">초기화</button>
+      </section>
+
+      <section id="dashboard" hidden>
+        <div class="kpis">
+          <article class="card kpi kpi-people"><div class="kpi-label">총 인원</div><div class="kpi-value" id="totalPeople">-</div><div class="kpi-note" id="peopleNote">현재 조회 기준</div></article>
+          <article class="card kpi kpi-age"><div class="kpi-label">평균 연령</div><div class="kpi-value"><span id="avgAge">-</span><span class="kpi-unit">세</span></div><div class="kpi-note" id="ageNote">연령 범위</div></article>
+          <article class="card kpi kpi-salary"><div class="kpi-label">평균 월 임금</div><div class="kpi-value"><span id="avgSalary">-</span><span class="kpi-unit">만원</span></div><div class="kpi-note" id="salaryNote">중앙값</div></article>
+          <article class="card kpi kpi-tenure"><div class="kpi-label">평균 근속연수</div><div class="kpi-value"><span id="avgTenure">-</span><span class="kpi-unit">년</span></div><div class="kpi-note" id="tenureNote">장기근속 비중</div></article>
+        </div>
+
+        <div class="grid">
+          <article class="card chart-card"><div class="card-head"><h2 class="card-title">부서별 인원</h2><span class="card-caption">HEADCOUNT</span></div><div class="bar-chart" id="deptChart"></div></article>
+          <article class="card chart-card"><div class="card-head"><h2 class="card-title">성별 구성</h2><span class="card-caption">GENDER</span></div><div id="genderChart"></div></article>
+          <article class="card chart-card"><div class="card-head"><h2 class="card-title">월 임금 분포</h2><span class="card-caption">10,000 KRW</span></div><div class="histogram" id="salaryChart"></div></article>
+        </div>
+
+        <article class="card table-card">
+          <div class="table-head"><h2 class="card-title">사원 현황 <span class="count" id="resultCount"></span></h2><span class="card-caption">열 제목을 눌러 정렬</span></div>
+          <div class="table-scroll">
+            <table><thead><tr>
+              <th data-key="이름">사원명</th><th data-key="부서명">부서</th><th data-key="직급">직급</th><th data-key="직책">직책</th><th data-key="성별">성별</th><th data-key="나이">나이</th><th data-key="임금(월)">월 임금</th><th data-key="근속연수">근속연수</th>
+            </tr></thead><tbody id="employeeRows"></tbody></table>
+          </div>
+          <div class="pagination"><span id="pageInfo"></span><button class="page-btn" id="prevBtn" aria-label="이전 페이지">‹</button><button class="page-btn" id="nextBtn" aria-label="다음 페이지">›</button></div>
+        </article>
+      </section>
+
+      <section class="card load-state" id="loadState">
+        <h2>사원 데이터를 불러오는 중입니다</h2>
+        <p id="loadMessage">잠시만 기다려 주세요.</p>
+        <label class="file-label" id="fileLabel" hidden>JSON 파일 선택<input id="fileInput" type="file" accept=".json,application/json"></label>
+      </section>
+    </main>
+  </div>
+
+  <script src="./js/dashboard.js"></script>
+</body>
+</html>
