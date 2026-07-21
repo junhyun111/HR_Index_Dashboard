@@ -11,8 +11,8 @@
     <aside class="sidebar">
       <div class="brand"><img src="./innodep_logo_white.svg" alt="INNODEP"></div>
       <div class="nav-title">WORKSPACE</div>
-      <div class="nav-item active"><span class="nav-icon">▦</span>HR 인덱스</div>
-      <div class="nav-item"><span class="nav-icon">◎</span>조직 현황</div>
+      <a class="nav-item active" href="./index.html"><span class="nav-icon">▦</span>HR 인덱스</a>
+      <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
       <div class="nav-item"><span class="nav-icon">◇</span>보상 분석</div>
       <div class="nav-item"><span class="nav-icon">◷</span>근속 분석</div>
       <div class="source-badge"><strong>데이터 소스</strong><br>innodep_hr_dummy_200.json<br><span id="sourceStatus">불러오는 중...</span></div>
@@ -21,7 +21,7 @@
     <main>
       <header class="topbar">
         <div><h1>HR Index DashBoard</h1><p class="subtitle">인력 구성과 보상, 근속 현황을 한눈에 확인합니다.</p></div>
-        <div class="updated" id="updatedAt">데이터 기준 · 로컬 JSON</div>
+        <div class="updated">데이터 기준 · 로컬 JSON</div>
       </header>
 
       <section class="filters card" id="filterArea" hidden>

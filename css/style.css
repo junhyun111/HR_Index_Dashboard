@@ -30,8 +30,9 @@ button, input, select { font: inherit; }
 .brand { display: flex; align-items: center; height: 34px; margin-bottom: 44px; }
 .brand img { display: block; width: 134px; height: auto; }
 .nav-title { margin: 0 10px 10px; color: #7891b1; font-size: 10px; font-weight: 800; letter-spacing: .14em; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 7px; border-radius: 10px; color: #b8cae1; font-size: 13px; }
+.nav-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 7px; border: 0; border-radius: 10px; color: #b8cae1; background: transparent; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
 .nav-item.active { color: white; background: rgba(255,255,255,.11); box-shadow: inset 3px 0 #4b88ff; }
+.nav-item:hover { color: white; background: rgba(255,255,255,.07); }
 .nav-icon { width: 18px; text-align: center; opacity: .9; }
 .source-badge { position: absolute; bottom: 24px; left: 22px; right: 22px; padding: 13px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(255,255,255,.05); color: #9db2cf; font-size: 11px; line-height: 1.55; }
 .source-badge strong { color: #e5eef9; }
@@ -50,11 +51,6 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
 .card { border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow); }
 .kpi { position: relative; overflow: hidden; min-height: 118px; padding: 21px 22px; }
-.kpi::after { content: ""; position: absolute; right: -20px; bottom: -30px; width: 100px; height: 100px; border-radius: 50%; background: var(--tint); }
-.kpi-people { --tint: #edf3ff; }
-.kpi-age { --tint: #eaf8f5; }
-.kpi-salary { --tint: #fff5e7; }
-.kpi-tenure { --tint: #eef3fb; }
 .kpi-label { color: var(--muted); font-size: 12px; font-weight: 700; }
 .kpi-value { margin-top: 13px; font-size: 27px; font-weight: 800; letter-spacing: -.04em; }
 .kpi-unit { margin-left: 4px; color: #8290a1; font-size: 12px; font-weight: 600; }

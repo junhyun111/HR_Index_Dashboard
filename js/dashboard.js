@@ -129,4 +129,5 @@ $('fileInput').addEventListener('change', async event => {
   try { initialize(cleanData(JSON.parse(await file.text()))); }
   catch(error) { $('loadMessage').textContent=`파일 오류: ${error.message}`; }
 });
+
 loadDefault();
