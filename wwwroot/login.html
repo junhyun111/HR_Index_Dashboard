@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INNODEP HR 로그인</title>
+  <link rel="stylesheet" href="./css/login.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-card">
+      <img src="./images/innodep_logo.svg" alt="INNODEP" class="login-logo">
+      <div class="login-heading"><span>HR INDEX</span><h1>로그인</h1><p>HR 대시보드에 접속하려면 로그인해 주세요.</p></div>
+      <form id="loginForm">
+        <label>아이디<input id="userName" name="userName" autocomplete="username" required autofocus></label>
+        <label>비밀번호<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+        <p class="login-error" id="loginError" aria-live="polite"></p>
+        <button id="loginButton" type="submit">로그인</button>
+      </form>
+    </section>
+  </main>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = document.getElementById('loginButton');
+      const error = document.getElementById('loginError');
+      button.disabled = true;
+      error.textContent = '';
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userName: document.getElementById('userName').value, password: document.getElementById('password').value })
+        });
+        if (!response.ok) {
+          let message = '로그인하지 못했습니다.';
+          try { message = (await response.json()).message || message; } catch (_) {}
+          throw new Error(message);
+        }
+        const parameters = new URLSearchParams(location.search);
+        const next = parameters.get('returnUrl') || parameters.get('ReturnUrl');
+        location.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
+      } catch (exception) {
+        error.textContent = exception.message;
+      } finally { button.disabled = false; }
+    });
+  </script>
+</body>
+</html>

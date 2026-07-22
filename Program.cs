@@ -1,14 +1,14 @@
-using HRDashboard.Authentication;
 using HRDashboard.Configuration;
 using HRDashboard.Data;
 using HRDashboard.Endpoints;
 using HRDashboard.Models;
 using HRDashboard.Services;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -20,34 +20,61 @@ var dataProtection = builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
 if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi();
 
-var authenticationSettings = builder.Configuration
-    .GetSection("Authentication").Get<AuthenticationSettings>() ?? new AuthenticationSettings();
-builder.Services.Configure<AuthenticationSettings>(builder.Configuration.GetSection("Authentication"));
-
-if (authenticationSettings.Mode.Equals("Windows", StringComparison.OrdinalIgnoreCase))
-{
-    builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme).AddNegotiate();
-}
-else
-{
-    if (!builder.Environment.IsDevelopment())
-        throw new InvalidOperationException("Development 인증은 Development 환경에서만 사용할 수 있습니다.");
-
-    builder.Services.AddAuthentication("Development")
-        .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>("Development", _ => { });
-}
-
-var groups = authenticationSettings.Groups;
+builder.Services.AddOptions<LoginSettings>()
+    .Bind(builder.Configuration.GetSection("Authentication"))
+    .Validate(x => !string.IsNullOrWhiteSpace(x.UserName) && !string.IsNullOrEmpty(x.Password),
+        "로그인 아이디와 비밀번호 설정이 필요합니다.")
+    .ValidateOnStart();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "HRDashboard.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+    });
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("DashboardViewer", policy =>
-        policy.RequireRole(groups.DashboardViewer, groups.SalaryViewer, groups.Editor, groups.Administrator));
-    options.AddPolicy("SalaryViewer", policy =>
-        policy.RequireRole(groups.SalaryViewer, groups.Administrator));
-    options.AddPolicy("Editor", policy =>
-        policy.RequireRole(groups.Editor, groups.Administrator));
-    options.AddPolicy("Administrator", policy =>
-        policy.RequireRole(groups.Administrator));
+    options.AddPolicy("DashboardViewer", policy => policy.RequireAuthenticatedUser());
+    options.AddPolicy("SalaryViewer", policy => policy.RequireAuthenticatedUser());
+    options.AddPolicy("Editor", policy => policy.RequireAuthenticatedUser());
+    options.AddPolicy("Administrator", policy => policy.RequireAuthenticatedUser());
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
 });
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
@@ -70,6 +97,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -110,8 +138,13 @@ app.Use(async (context, next) =>
 });
 
 app.MapDashboardEndpoints();
+app.MapAuthenticationEndpoints();
 
 var webRoot = app.Environment.WebRootPath;
+app.MapGet("/login", () => Results.File(Path.Combine(webRoot, "login.html"), "text/html; charset=utf-8"))
+    .AllowAnonymous();
+app.MapGet("/login.html", () => Results.File(Path.Combine(webRoot, "login.html"), "text/html; charset=utf-8"))
+    .AllowAnonymous();
 app.MapGet("/", () => Results.File(Path.Combine(webRoot, "index.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/index.html", () => Results.File(Path.Combine(webRoot, "index.html"), "text/html; charset=utf-8"))

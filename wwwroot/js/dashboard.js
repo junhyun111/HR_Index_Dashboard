@@ -27,7 +27,8 @@ async function loadDashboard() {
   try {
     const response = await fetch(`/api/dashboard?${parameters}`, { credentials: 'same-origin' });
     if (response.status === 401 || response.status === 403) {
-      throw new Error('이 대시보드를 조회할 AD 권한이 없습니다.');
+      location.replace(`/login?returnUrl=${encodeURIComponent(location.pathname + location.search)}`);
+      return;
     }
     if (!response.ok) throw new Error(`서버 오류(HTTP ${response.status})`);
     const data = await response.json();
@@ -55,8 +56,15 @@ async function initializePermissions() {
   if (!response.ok) return;
   const session = await response.json();
   canEditEmployees = session.canEdit;
+  $('sessionUser').textContent = session.userName || '로그인 사용자';
   $('employeeActions').hidden = !canEditEmployees;
 }
+
+$('logoutBtn').addEventListener('click', async () => {
+  $('logoutBtn').disabled = true;
+  try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }); }
+  finally { location.replace('/login'); }
+});
 
 function setLoading(isLoading) {
   $('sourceStatus').textContent = isLoading ? 'DB 조회 중...' : $('sourceStatus').textContent;

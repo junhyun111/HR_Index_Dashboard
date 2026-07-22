@@ -1,9 +1,7 @@
-using HRDashboard.Configuration;
 using HRDashboard.Data;
 using HRDashboard.Models;
 using HRDashboard.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace HRDashboard.Endpoints;
 
@@ -15,17 +13,13 @@ public static class DashboardEndpoints
     {
         var api = endpoints.MapGroup("/api");
 
-        api.MapGet("/session", (HttpContext context, IOptions<AuthenticationSettings> auth) =>
-        {
-            var groups = auth.Value.Groups;
-            return Results.Ok(new
+        api.MapGet("/session", (HttpContext context) => Results.Ok(new
             {
                 userName = context.User.Identity?.Name,
-                canViewSalary = HasRole(context, groups.SalaryViewer, groups.Administrator),
-                canEdit = HasRole(context, groups.Editor, groups.Administrator),
-                isAdministrator = context.User.IsInRole(groups.Administrator)
-            });
-        }).RequireAuthorization("DashboardViewer");
+                canViewSalary = true,
+                canEdit = true,
+                isAdministrator = true
+            })).RequireAuthorization("DashboardViewer");
 
         api.MapGet("/dashboard", GetDashboardAsync)
             .RequireAuthorization("DashboardViewer");
@@ -56,19 +50,15 @@ public static class DashboardEndpoints
     }
 
     private static async Task<IResult> ExportEmployeesAsync(
-        HttpContext context, AppDbContext db, EmployeeCsvService csv,
-        IOptions<AuthenticationSettings> auth, CancellationToken cancellationToken)
+        AppDbContext db, EmployeeCsvService csv, CancellationToken cancellationToken)
     {
-        var groups = auth.Value.Groups;
-        var canEditSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
         var employees = await db.Employees.AsNoTracking().OrderBy(x => x.Id).ToListAsync(cancellationToken);
-        var bytes = csv.Export(employees, canEditSalary);
+        var bytes = csv.Export(employees, includeSalary: true);
         return Results.File(bytes, "text/csv; charset=utf-8", $"hr-employees-{DateTime.Now:yyyy-MM-dd}.csv");
     }
 
     private static async Task<IResult> ImportEmployeesAsync(
-        IFormFile? file, HttpContext context, AppDbContext db, EmployeeCsvService csv,
-        IOptions<AuthenticationSettings> auth, CancellationToken cancellationToken)
+        IFormFile? file, AppDbContext db, EmployeeCsvService csv, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 CSV 파일을 선택하세요." });
         if (file.Length > 10 * 1024 * 1024) return Results.BadRequest(new { message = "파일 크기는 10MB 이하여야 합니다." });
@@ -77,10 +67,8 @@ public static class DashboardEndpoints
 
         try
         {
-            var groups = auth.Value.Groups;
-            var canEditSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
             await using var stream = file.OpenReadStream();
-            var import = csv.Parse(stream, canEditSalary);
+            var import = csv.Parse(stream, canEditSalary: true);
             return await ApplyImportAsync(import, db, cancellationToken);
         }
         catch (EmployeeCsvException exception)
@@ -94,16 +82,13 @@ public static class DashboardEndpoints
     }
 
     private static async Task<IResult> PasteEmployeesAsync(
-        EmployeePasteRequest request, HttpContext context, AppDbContext db, EmployeeCsvService csv,
-        IOptions<AuthenticationSettings> auth, CancellationToken cancellationToken)
+        EmployeePasteRequest request, AppDbContext db, EmployeeCsvService csv, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Text)) return Results.BadRequest(new { message = "붙여넣은 표가 비어 있습니다." });
         if (request.Text.Length > 5_000_000) return Results.BadRequest(new { message = "붙여넣는 데이터는 5MB 이하여야 합니다." });
         try
         {
-            var groups = auth.Value.Groups;
-            var canEditSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
-            var import = csv.ParseClipboard(request.Text, canEditSalary);
+            var import = csv.ParseClipboard(request.Text, canEditSalary: true);
             return await ApplyImportAsync(import, db, cancellationToken);
         }
         catch (EmployeeCsvException exception)
@@ -166,9 +151,7 @@ public static class DashboardEndpoints
         string? direction,
         int page,
         int pageSize,
-        HttpContext context,
         AppDbContext db,
-        IOptions<AuthenticationSettings> auth,
         CancellationToken cancellationToken)
     {
         page = Math.Max(1, page);
@@ -192,8 +175,7 @@ public static class DashboardEndpoints
         var pages = Math.Max(1, (int)Math.Ceiling(filteredCount / (double)pageSize));
         page = Math.Min(page, pages);
 
-        var groups = auth.Value.Groups;
-        var canViewSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
+        const bool canViewSalary = true;
         var pageRows = rows.Skip((page - 1) * pageSize).Take(pageSize)
             .Select(x => new EmployeeResponse(
                 x.DepartmentName, x.Name, x.Grade, x.Position,
@@ -271,9 +253,6 @@ public static class DashboardEndpoints
         }
         return labels.Select((label, index) => new CountResponse(label, counts[index])).ToArray();
     }
-
-    private static bool HasRole(HttpContext context, params string[] roles) =>
-        roles.Any(context.User.IsInRole);
 
     private sealed record EmployeeResponse(string DepartmentName, string Name, string Grade,
         string Position, string Gender, int Age, long? MonthlySalary, double YearsOfService);
