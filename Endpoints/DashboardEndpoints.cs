@@ -30,13 +30,6 @@ public static class DashboardEndpoints
         api.MapGet("/dashboard", GetDashboardAsync)
             .RequireAuthorization("DashboardViewer");
 
-        api.MapPost("/admin/import-employees", async (
-            bool replace,
-            EmployeeImportService importer,
-            CancellationToken cancellationToken) =>
-                Results.Ok(await importer.ImportAsync(replace, cancellationToken)))
-            .RequireAuthorization("Administrator");
-
         api.MapGet("/integrations/status", async (
             ExternalApiClient client,
             CancellationToken cancellationToken) =>

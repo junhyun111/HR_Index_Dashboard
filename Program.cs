@@ -53,7 +53,6 @@ builder.Services.AddAuthorization(options =>
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
-builder.Services.AddScoped<EmployeeImportService>();
 builder.Services.AddHttpClient<ExternalApiClient>((services, client) =>
 {
     var configuration = services.GetRequiredService<IConfiguration>();
@@ -127,9 +126,6 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
-    var importer = scope.ServiceProvider.GetRequiredService<EmployeeImportService>();
-    var result = await importer.ImportIfEmptyAsync();
-    app.Logger.LogInformation("초기 데이터 상태: {Message}", result.Message);
 }
 
 app.Run();
