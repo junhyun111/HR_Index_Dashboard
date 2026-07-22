@@ -15,13 +15,13 @@
       <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
       <div class="nav-item"><span class="nav-icon">◇</span>보상 분석</div>
       <div class="nav-item"><span class="nav-icon">◷</span>근속 분석</div>
-      <div class="source-badge"><strong>데이터 소스</strong><br>innodep_hr_dummy_200.json<br><span id="sourceStatus">불러오는 중...</span></div>
+      <div class="source-badge"><strong>데이터 소스</strong><br>서버 로컬 SQLite<br><span id="sourceStatus">불러오는 중...</span></div>
     </aside>
 
     <main>
       <header class="topbar">
         <div><h1>HR Index DashBoard</h1><p class="subtitle">인력 구성과 보상, 근속 현황을 한눈에 확인합니다.</p></div>
-        <div class="updated">데이터 기준 · 로컬 JSON</div>
+        <div class="updated">인증 · Windows AD / SQLite</div>
       </header>
 
       <section class="filters card" id="filterArea" hidden>
@@ -60,7 +60,6 @@
       <section class="card load-state" id="loadState">
         <h2>사원 데이터를 불러오는 중입니다</h2>
         <p id="loadMessage">잠시만 기다려 주세요.</p>
-        <label class="file-label" id="fileLabel" hidden>JSON 파일 선택<input id="fileInput" type="file" accept=".json,application/json"></label>
       </section>
     </main>
   </div>
