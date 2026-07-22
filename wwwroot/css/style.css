@@ -4,10 +4,8 @@
   --line: #e7edf4;
   --paper: #ffffff;
   --canvas: #f4f7fb;
-  --navy: #173b68;
   --blue: #3978f6;
   --cyan: #35b7ca;
-  --orange: #f0a43b;
   --green: #38a47b;
   --shadow: 0 10px 30px rgba(24, 59, 104, .08);
 }
@@ -108,8 +106,6 @@ tbody tr:hover { background: #f7faff; }
 .load-state { grid-column: 1 / -1; padding: 60px 20px; text-align: center; }
 .load-state h2 { margin: 0 0 8px; font-size: 18px; }
 .load-state p { max-width: 540px; margin: 0 auto 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
-.file-label { display: inline-flex; align-items: center; height: 40px; padding: 0 16px; border-radius: 8px; color: white; background: var(--blue); cursor: pointer; font-size: 12px; font-weight: 700; }
-#fileInput { display: none; }
 
 @media (max-width: 1120px) {
   .grid { grid-template-columns: 1fr 1fr; }

@@ -99,7 +99,6 @@ function createOrgBranch(item, isRoot = false) {
   const card = document.createElement('button');
   card.type = 'button';
   card.className = `org-node org-node-${item.type}`;
-  card.dataset.orgId = item.id;
 
   const type = document.createElement('span');
   type.className = 'org-type';

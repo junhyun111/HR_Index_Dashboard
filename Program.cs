@@ -75,12 +75,12 @@ app.UseAuthorization();
 
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "css")),
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.WebRootPath, "css")),
     RequestPath = "/css"
 });
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.ContentRootPath, "images")),
+    FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.WebRootPath, "images")),
     RequestPath = "/images"
 });
 
@@ -111,16 +111,16 @@ app.Use(async (context, next) =>
 
 app.MapDashboardEndpoints();
 
-var root = app.Environment.ContentRootPath;
-app.MapGet("/", () => Results.File(Path.Combine(root, "index.html"), "text/html; charset=utf-8"))
+var webRoot = app.Environment.WebRootPath;
+app.MapGet("/", () => Results.File(Path.Combine(webRoot, "index.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
-app.MapGet("/index.html", () => Results.File(Path.Combine(root, "index.html"), "text/html; charset=utf-8"))
+app.MapGet("/index.html", () => Results.File(Path.Combine(webRoot, "index.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
-app.MapGet("/organization.html", () => Results.File(Path.Combine(root, "organization.html"), "text/html; charset=utf-8"))
+app.MapGet("/organization.html", () => Results.File(Path.Combine(webRoot, "organization.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
-app.MapGet("/js/dashboard.js", () => Results.File(Path.Combine(root, "js", "dashboard.js"), "text/javascript; charset=utf-8"))
+app.MapGet("/js/dashboard.js", () => Results.File(Path.Combine(webRoot, "js", "dashboard.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
-app.MapGet("/js/organization.js", () => Results.File(Path.Combine(root, "js", "organization.js"), "text/javascript; charset=utf-8"))
+app.MapGet("/js/organization.js", () => Results.File(Path.Combine(webRoot, "js", "organization.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 
 await using (var scope = app.Services.CreateAsyncScope())

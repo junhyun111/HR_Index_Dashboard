@@ -93,7 +93,7 @@ public static class DashboardEndpoints
         var canViewSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
         var pageRows = rows.Skip((page - 1) * pageSize).Take(pageSize)
             .Select(x => new EmployeeResponse(
-                x.Id, x.CompanyName, x.DepartmentName, x.Name, x.Grade, x.Position,
+                x.DepartmentName, x.Name, x.Grade, x.Position,
                 x.Gender, x.Age, canViewSalary ? x.MonthlySalary : null, x.YearsOfService));
 
         var ages = rows.Select(x => x.Age).ToArray();
@@ -172,8 +172,7 @@ public static class DashboardEndpoints
     private static bool HasRole(HttpContext context, params string[] roles) =>
         roles.Any(context.User.IsInRole);
 
-    private sealed record EmployeeResponse(long Id, string CompanyName, string DepartmentName,
-        string Name, string Grade, string Position, string Gender, int Age, long? MonthlySalary,
-        double YearsOfService);
+    private sealed record EmployeeResponse(string DepartmentName, string Name, string Grade,
+        string Position, string Gender, int Age, long? MonthlySalary, double YearsOfService);
     private sealed record CountResponse(string Label, int Value);
 }

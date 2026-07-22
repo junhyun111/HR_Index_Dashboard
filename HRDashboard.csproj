@@ -15,14 +15,4 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="index.html" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="organization.html" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="css\**\*" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="images\**\*" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="js\dashboard.js" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="js\organization.js" CopyToOutputDirectory="PreserveNewest" />
-    <Content Update="js\innodep_hr_dummy_200.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
-  </ItemGroup>
 </Project>
