@@ -30,6 +30,14 @@ public static class DashboardEndpoints
         api.MapGet("/dashboard", GetDashboardAsync)
             .RequireAuthorization("DashboardViewer");
 
+        api.MapGet("/employees/export", ExportEmployeesAsync)
+            .RequireAuthorization("Editor");
+        api.MapPost("/employees/import", ImportEmployeesAsync)
+            .DisableAntiforgery()
+            .RequireAuthorization("Editor");
+        api.MapPost("/employees/paste", PasteEmployeesAsync)
+            .RequireAuthorization("Editor");
+
         api.MapGet("/integrations/status", async (
             ExternalApiClient client,
             CancellationToken cancellationToken) =>
@@ -45,6 +53,108 @@ public static class DashboardEndpoints
         }).RequireAuthorization("Administrator");
 
         return endpoints;
+    }
+
+    private static async Task<IResult> ExportEmployeesAsync(
+        HttpContext context, AppDbContext db, EmployeeCsvService csv,
+        IOptions<AuthenticationSettings> auth, CancellationToken cancellationToken)
+    {
+        var groups = auth.Value.Groups;
+        var canEditSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
+        var employees = await db.Employees.AsNoTracking().OrderBy(x => x.Id).ToListAsync(cancellationToken);
+        var bytes = csv.Export(employees, canEditSalary);
+        return Results.File(bytes, "text/csv; charset=utf-8", $"hr-employees-{DateTime.Now:yyyy-MM-dd}.csv");
+    }
+
+    private static async Task<IResult> ImportEmployeesAsync(
+        IFormFile? file, HttpContext context, AppDbContext db, EmployeeCsvService csv,
+        IOptions<AuthenticationSettings> auth, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 CSV 파일을 선택하세요." });
+        if (file.Length > 10 * 1024 * 1024) return Results.BadRequest(new { message = "파일 크기는 10MB 이하여야 합니다." });
+        if (!string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
+            return Results.BadRequest(new { message = ".csv 형식만 업로드할 수 있습니다." });
+
+        try
+        {
+            var groups = auth.Value.Groups;
+            var canEditSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
+            await using var stream = file.OpenReadStream();
+            var import = csv.Parse(stream, canEditSalary);
+            return await ApplyImportAsync(import, db, cancellationToken);
+        }
+        catch (EmployeeCsvException exception)
+        {
+            return Results.BadRequest(new { message = exception.Message });
+        }
+        catch (Exception exception) when (exception is IOException or System.Text.DecoderFallbackException)
+        {
+            return Results.BadRequest(new { message = "올바른 UTF-8 CSV 파일을 읽을 수 없습니다." });
+        }
+    }
+
+    private static async Task<IResult> PasteEmployeesAsync(
+        EmployeePasteRequest request, HttpContext context, AppDbContext db, EmployeeCsvService csv,
+        IOptions<AuthenticationSettings> auth, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Text)) return Results.BadRequest(new { message = "붙여넣은 표가 비어 있습니다." });
+        if (request.Text.Length > 5_000_000) return Results.BadRequest(new { message = "붙여넣는 데이터는 5MB 이하여야 합니다." });
+        try
+        {
+            var groups = auth.Value.Groups;
+            var canEditSalary = HasRole(context, groups.SalaryViewer, groups.Administrator);
+            var import = csv.ParseClipboard(request.Text, canEditSalary);
+            return await ApplyImportAsync(import, db, cancellationToken);
+        }
+        catch (EmployeeCsvException exception)
+        {
+            return Results.BadRequest(new { message = exception.Message });
+        }
+    }
+
+    private static async Task<IResult> ApplyImportAsync(
+        EmployeeImportResult import, AppDbContext db, CancellationToken cancellationToken)
+    {
+        var ids = import.Rows.Where(x => x.Id.HasValue).Select(x => x.Id!.Value).ToArray();
+        var existing = await db.Employees.Where(x => ids.Contains(x.Id)).ToDictionaryAsync(x => x.Id, cancellationToken);
+        var unknownIds = ids.Where(id => !existing.ContainsKey(id)).ToArray();
+        if (unknownIds.Length > 0)
+            return Results.BadRequest(new { message = $"DB에 없는 직원 ID가 있습니다: {string.Join(", ", unknownIds.Take(20))}" });
+
+        var added = 0;
+        var updated = 0;
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        foreach (var row in import.Rows)
+        {
+            Employee employee;
+            if (row.Id.HasValue)
+            {
+                employee = existing[row.Id.Value];
+                updated++;
+            }
+            else
+            {
+                employee = new Employee
+                {
+                    CompanyName = row.CompanyName, DepartmentName = row.DepartmentName, Name = row.Name,
+                    Grade = row.Grade, Position = row.Position, Gender = row.Gender
+                };
+                db.Employees.Add(employee);
+                added++;
+            }
+            employee.CompanyName = row.CompanyName;
+            employee.DepartmentName = row.DepartmentName;
+            employee.Name = row.Name;
+            employee.Grade = row.Grade;
+            employee.Position = row.Position;
+            employee.Gender = row.Gender;
+            employee.Age = row.Age;
+            if (row.MonthlySalary.HasValue) employee.MonthlySalary = row.MonthlySalary.Value;
+            employee.YearsOfService = row.YearsOfService;
+        }
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return Results.Ok(new { added, updated, total = import.Rows.Count });
     }
 
     private static async Task<IResult> GetDashboardAsync(
@@ -168,4 +278,5 @@ public static class DashboardEndpoints
     private sealed record EmployeeResponse(string DepartmentName, string Name, string Grade,
         string Position, string Gender, int Age, long? MonthlySalary, double YearsOfService);
     private sealed record CountResponse(string Label, int Value);
+    private sealed record EmployeePasteRequest(string Text);
 }

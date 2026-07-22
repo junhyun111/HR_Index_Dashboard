@@ -53,6 +53,7 @@ builder.Services.AddAuthorization(options =>
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<ExternalApiClient>((services, client) =>
 {
     var configuration = services.GetRequiredService<IConfiguration>();

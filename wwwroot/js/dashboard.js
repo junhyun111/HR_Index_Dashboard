@@ -6,6 +6,7 @@ let sortKey = 'name';
 let sortDirection = 'asc';
 let searchTimer;
 let filtersInitialized = false;
+let canEditEmployees = false;
 
 async function loadDashboard() {
   setLoading(true);
@@ -30,6 +31,7 @@ async function loadDashboard() {
     }
     if (!response.ok) throw new Error(`서버 오류(HTTP ${response.status})`);
     const data = await response.json();
+    await initializePermissions();
     if (!filtersInitialized) initializeFilters(data.filters);
     render(data);
     $('loadState').hidden = true;
@@ -44,6 +46,16 @@ async function loadDashboard() {
   } finally {
     setLoading(false);
   }
+}
+
+async function initializePermissions() {
+  if (canEditEmployees || $('employeeActions').dataset.checked) return;
+  $('employeeActions').dataset.checked = 'true';
+  const response = await fetch('/api/session', { credentials: 'same-origin' });
+  if (!response.ok) return;
+  const session = await response.json();
+  canEditEmployees = session.canEdit;
+  $('employeeActions').hidden = !canEditEmployees;
 }
 
 function setLoading(isLoading) {
@@ -152,5 +164,81 @@ document.querySelectorAll('th[data-key]').forEach(th => th.addEventListener('cli
   page = 1;
   loadDashboard();
 }));
+
+$('exportEmployeesBtn').addEventListener('click', async () => {
+  setImportBusy(true, 'CSV 파일을 만드는 중...');
+  try {
+    const response = await fetch('/api/employees/export', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(await responseMessage(response));
+    const blob = await response.blob();
+    const disposition = response.headers.get('content-disposition') || '';
+    const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = encodedName ? decodeURIComponent(encodedName) : `hr-employees-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    $('importStatus').textContent = '내보내기 완료 · 직원 ID 열은 변경하지 마세요.';
+  } catch (error) {
+    $('importStatus').textContent = `내보내기 실패: ${error.message}`;
+  } finally { setImportBusy(false); }
+});
+
+$('pasteEmployeesBtn').addEventListener('click', () => {
+  $('pasteArea').value = '';
+  updatePasteSummary();
+  $('pasteDialog').showModal();
+  requestAnimationFrame(() => $('pasteArea').focus());
+});
+
+['closePasteBtn', 'cancelPasteBtn'].forEach(id => $(id).addEventListener('click', () => $('pasteDialog').close()));
+
+$('pasteArea').addEventListener('input', updatePasteSummary);
+function updatePasteSummary() {
+  const text = $('pasteArea').value.trim();
+  const rows = text ? text.split(/\r?\n/).filter(line => line.trim()).length : 0;
+  const columns = text ? text.split(/\r?\n/, 1)[0].split('\t').length : 0;
+  $('pasteSummary').textContent = rows ? `${rows}행 · ${columns}열 감지 (첫 행은 머리글)` : '붙여넣은 데이터가 없습니다.';
+  $('applyPasteBtn').disabled = rows < 2 || columns < 2;
+}
+
+$('pasteForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const text = $('pasteArea').value;
+  if (!text.trim()) return;
+  if (!confirm('붙여넣은 내용으로 기존 직원을 수정하고 신규 직원을 추가할까요?\n표에서 빠진 직원은 삭제되지 않습니다.')) return;
+  setImportBusy(true, '붙여넣은 표를 검증하고 DB에 반영하는 중...');
+  $('applyPasteBtn').disabled = true;
+  try {
+    const response = await fetch('/api/employees/paste', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+    });
+    if (!response.ok) throw new Error(await responseMessage(response));
+    const result = await response.json();
+    $('importStatus').textContent = `반영 완료 · 수정 ${result.updated}명 / 추가 ${result.added}명`;
+    $('pasteDialog').close();
+    filtersInitialized = false;
+    ['deptFilter', 'gradeFilter', 'genderFilter'].forEach(id => $(id).options.length = 1);
+    page = 1;
+    await loadDashboard();
+  } catch (error) {
+    $('importStatus').textContent = `반영 실패: ${error.message}`;
+    $('pasteSummary').textContent = `오류: ${error.message}`;
+  } finally {
+    setImportBusy(false);
+    updatePasteSummary();
+  }
+});
+
+function setImportBusy(busy, message) {
+  $('exportEmployeesBtn').disabled = busy;
+  $('pasteEmployeesBtn').disabled = busy;
+  if (message) $('importStatus').textContent = message;
+}
+
+async function responseMessage(response) {
+  try { return (await response.json()).message || `서버 오류(HTTP ${response.status})`; }
+  catch (_) { return `서버 오류(HTTP ${response.status})`; }
+}
 
 loadDashboard();
