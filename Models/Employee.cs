@@ -17,4 +17,5 @@ public sealed class Employee
     public DateTime? BirthDate { get; set; }
     public DateTime? HireDate { get; set; }
     public DateTime? TerminationDate { get; set; }
+    public long? MonthlyWage { get; set; }
 }

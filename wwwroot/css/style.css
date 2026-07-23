@@ -49,7 +49,7 @@ select, .search { width: 100%; height: 38px; padding: 0 12px; border: 1px solid 
 select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(57,120,246,.1); }
 .reset { height: 38px; padding: 0 15px; border: 0; border-radius: 8px; color: #496078; background: #edf2f7; cursor: pointer; }
 
-.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-bottom: 16px; }
 .card { border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow); }
 .kpi { position: relative; overflow: hidden; min-height: 118px; padding: 21px 22px; }
 .kpi-label { color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -99,6 +99,12 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .compact-bars .bar-row { grid-template-columns: 68px 1fr 30px; gap: 10px; font-size: 11px; }
 .compact-bars .bar-track { height: 10px; }
 .chart-compact .chart-empty { padding: 38px 0; }
+.wage-histogram { height: 205px; display: flex; align-items: flex-end; gap: 12px; padding: 20px 4px 0; border-bottom: 1px solid var(--line); }
+.wage-col { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 7px; }
+.wage-value { color: #718096; font-size: 10px; }
+.wage-bar { width: 72%; min-height: 3px; border-radius: 5px 5px 0 0; background: linear-gradient(#35b7ca,#65cad6); animation: rise .6s ease both; }
+.wage-label { height: 17px; color: #8391a1; font-size: 9px; white-space: nowrap; }
+.wage-histogram .chart-empty { width: 100%; align-self: center; }
 .legend { display: flex; justify-content: center; gap: 22px; margin-top: 16px; color: #617287; font-size: 11px; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
 .dot-male { background: var(--blue); }

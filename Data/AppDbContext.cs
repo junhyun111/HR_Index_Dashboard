@@ -24,6 +24,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.Property(x => x.JobGroup).HasMaxLength(50);
             entity.Property(x => x.EmploymentType).HasMaxLength(50);
             entity.Property(x => x.Gender).HasMaxLength(20);
+            entity.Property(x => x.MonthlyWage);
             entity.HasIndex(x => x.EmployeeNumber).IsUnique();
             entity.HasIndex(x => x.Department);
             entity.HasIndex(x => x.Name);

@@ -57,6 +57,7 @@ public static class DashboardEndpoints
     {
         if(string.IsNullOrWhiteSpace(request.EmployeeNumber)) return "사번은 필수입니다.";
         if(request.EmployeeNumber.Trim().Length>50) return "사번은 50자 이하여야 합니다.";
+        if(request.MonthlyWage<0) return "월임금은 0 이상의 원 단위 숫자여야 합니다.";
         return null;
     }
 
@@ -65,7 +66,7 @@ public static class DashboardEndpoints
         string? T(string? v)=>string.IsNullOrWhiteSpace(v)?null:v.Trim();
         x.EmployeeNumber=r.EmployeeNumber.Trim(); x.Workplace=T(r.Workplace); x.ParentDepartment=T(r.ParentDepartment); x.Department=T(r.Department);
         x.Name=T(r.Name); x.Position=T(r.Position); x.WorkShift=T(r.WorkShift); x.Duty=T(r.Duty); x.JobGroup=T(r.JobGroup);
-        x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender); x.BirthDate=r.BirthDate; x.HireDate=r.HireDate; x.TerminationDate=r.TerminationDate;
+        x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender); x.BirthDate=r.BirthDate; x.HireDate=r.HireDate; x.TerminationDate=r.TerminationDate; x.MonthlyWage=r.MonthlyWage;
     }
 
     private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
@@ -103,7 +104,7 @@ public static class DashboardEndpoints
             else updated++;
             x.Workplace=row.Workplace; x.ParentDepartment=row.ParentDepartment; x.Department=row.Department; x.Name=row.Name;
             x.Position=row.Position; x.WorkShift=row.WorkShift; x.Duty=row.Duty; x.JobGroup=row.JobGroup;
-            x.EmploymentType=row.EmploymentType; x.Gender=row.Gender; x.BirthDate=row.BirthDate; x.HireDate=row.HireDate; x.TerminationDate=row.TerminationDate;
+            x.EmploymentType=row.EmploymentType; x.Gender=row.Gender; x.BirthDate=row.BirthDate; x.HireDate=row.HireDate; x.TerminationDate=row.TerminationDate; x.MonthlyWage=row.MonthlyWage;
         }
         if(deleteMissing)
         {
@@ -129,11 +130,11 @@ public static class DashboardEndpoints
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department),ct), genders=await Values(db.Employees.Select(x=>x.Gender),ct) },
-            summary=new { totalCount,filteredCount,averageAge=AverageAge(rows,today),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
+            summary=new { totalCount,filteredCount,averageAge=AverageAge(rows,today),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
             departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,today),
-            monthlyWages=Array.Empty<CountResponse>(),
+            monthlyWages=MonthlyWageGroups(rows),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
         });
     }
@@ -170,13 +171,28 @@ public static class DashboardEndpoints
         return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
     }
 
+    private static double? AverageMonthlyWage(IEnumerable<Employee> rows)
+    {
+        var wages=rows.Where(x=>x.MonthlyWage!=null).Select(x=>x.MonthlyWage!.Value).ToArray();
+        return wages.Length==0?null:Math.Round(wages.Average()/10000d,1);
+    }
+
+    private static CountResponse[] MonthlyWageGroups(IEnumerable<Employee> rows)
+    {
+        var counts=new int[8];
+        foreach(var wage in rows.Where(x=>x.MonthlyWage!=null).Select(x=>x.MonthlyWage!.Value/10000d))
+            counts[wage<300?0:wage<400?1:wage<500?2:wage<600?3:wage<700?4:wage<800?5:wage<900?6:7]++;
+        var labels=new[]{"~300","~400","~500","~600","~700","~800","~900","900+"};
+        return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
+    }
+
     private static async Task<string[]> Values(IQueryable<string?> q,CancellationToken ct)=>await q.Where(x=>x!=null&&x!="").Select(x=>x!).Distinct().Order().ToArrayAsync(ct);
     private static List<Employee> Sort(List<Employee> rows,string? sort,string? direction)
     {
-        Func<Employee,object?> key=sort switch { "employeeNumber"=>x=>x.EmployeeNumber,"workplace"=>x=>x.Workplace,"parentDepartment"=>x=>x.ParentDepartment,"department"=>x=>x.Department,"position"=>x=>x.Position,"workShift"=>x=>x.WorkShift,"duty"=>x=>x.Duty,"jobGroup"=>x=>x.JobGroup,"employmentType"=>x=>x.EmploymentType,"gender"=>x=>x.Gender,"birthDate"=>x=>x.BirthDate,"hireDate"=>x=>x.HireDate,"terminationDate"=>x=>x.TerminationDate,"name"=>x=>x.Name,_=>x=>x.Id };
+        Func<Employee,object?> key=sort switch { "employeeNumber"=>x=>x.EmployeeNumber,"workplace"=>x=>x.Workplace,"parentDepartment"=>x=>x.ParentDepartment,"department"=>x=>x.Department,"position"=>x=>x.Position,"workShift"=>x=>x.WorkShift,"duty"=>x=>x.Duty,"jobGroup"=>x=>x.JobGroup,"employmentType"=>x=>x.EmploymentType,"gender"=>x=>x.Gender,"birthDate"=>x=>x.BirthDate,"hireDate"=>x=>x.HireDate,"terminationDate"=>x=>x.TerminationDate,"monthlyWage"=>x=>x.MonthlyWage,"name"=>x=>x.Name,_=>x=>x.Id };
         return (direction=="desc"?rows.OrderByDescending(key):rows.OrderBy(key)).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
     private sealed record EmployeePasteRequest(string Text,bool DeleteMissing=false);
-    private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate);
+    private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? MonthlyWage);
 }

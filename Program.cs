@@ -143,6 +143,8 @@ await using (var scope = app.Services.CreateAsyncScope())
         while (await reader.ReadAsync()) columns.Add(reader.GetString(1));
     if (!columns.Contains("BirthDate"))
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN BirthDate TEXT NULL");
+    if (!columns.Contains("MonthlyWage"))
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN MonthlyWage INTEGER NULL");
 }
 
 app.Run();
