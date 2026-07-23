@@ -5,6 +5,7 @@
   <title>INNODEP 경영지표</title>
   <link rel="stylesheet" href="./css/style.css?v=20260723-management1">
   <link rel="stylesheet" href="./css/management.css?v=20260723-management2">
+  <link rel="stylesheet" href="./css/management-hr.css?v=20260723-management5">
 </head>
 <body><div class="shell">
   <aside class="sidebar">
@@ -22,10 +23,10 @@
       <article class="card management-kpi"><span>영업이익</span><strong id="operatingIncome">-</strong><small>공시 기준</small></article>
       <article class="card management-kpi"><span>당기순이익</span><strong id="netIncome">-</strong><small>공시 기준</small></article>
       <article class="card management-kpi"><span>영업이익률</span><strong id="operatingMargin">-</strong><small>영업이익 ÷ 매출액</small></article>
-      <article class="card management-kpi estimate"><span>인당 매출</span><strong id="revenuePerEmployee">-</strong><small>현재 인원 기준 추정</small></article>
-      <article class="card management-kpi dart-metric"><span>DART 평균 급여</span><strong id="dartAverageSalary">-</strong><small>공시 직원 현황 기준</small></article>
-      <article class="card management-kpi dart-metric"><span>인건비 비율</span><strong id="laborCostRatio">-</strong><small>DART 급여총액 ÷ 매출액</small></article>
-      <article class="card management-kpi dart-metric"><span>인건비 투자수익률</span><strong id="laborRoi">-</strong><small>(영업이익 + 급여총액) ÷ 급여총액</small></article>
+    </section>
+    <section class="hr-metric-grid">
+      <article class="card hr-chart-card"><div class="card-head"><div><h2 class="card-title">인력 생산성 추이</h2><p>인당 매출은 현재 재직 인원 기준입니다.</p></div><span class="metric-unit">만원</span></div><div class="chart-legend"><span><i class="legend-line revenue-line"></i>인당 매출</span><span><i class="legend-line salary-line"></i>평균 급여</span></div><div class="hr-chart" id="productivityChart"></div></article>
+      <article class="card hr-chart-card"><div class="card-head"><div><h2 class="card-title">인건비 효율 추이</h2><p>DART 급여총액이 있는 기간만 표시합니다.</p></div><span class="metric-unit">%</span></div><div class="chart-legend"><span><i class="legend-line cost-line"></i>인건비 비율</span><span><i class="legend-line roi-line"></i>인건비 투자수익률</span></div><div class="hr-chart" id="laborEfficiencyChart"></div></article>
     </section>
     <section class="management-grid">
       <article class="card management-chart-card"><div class="card-head"><h2 class="card-title" id="financeChartTitle">연도별 매출·영업이익 추이</h2><span class="metric-unit">억원</span></div><div class="chart-legend"><span><i class="legend-line revenue-line"></i>매출액</span><span><i class="legend-line operating-line"></i>영업이익</span></div><div class="finance-chart" id="financeChart"></div></article>
@@ -40,4 +41,4 @@
     </article>
     <section class="card load-state" id="managementLoad"><h2>경영지표를 불러오는 중입니다</h2><p id="managementMessage">잠시만 기다려 주세요.</p></section>
   </main>
-</div><script src="./js/management.js?v=20260723-management4"></script></body></html>
+</div><script src="./js/management.js?v=20260723-management5"></script></body></html>

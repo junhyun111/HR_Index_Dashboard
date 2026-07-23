@@ -37,18 +37,13 @@ function render(){
     ?periodReports.find(x=>x.businessYear===year)
     :periodReports[periodReports.length-1];
   if(!selected){renderEmpty();return;}
-  renderKpis(selected);renderSummary(selected);renderChart(periodReports);renderTable(mode==='annual'?[selected]:periodReports);
+  renderKpis(selected);renderSummary(selected);renderChart(periodReports);renderHrCharts(periodReports);renderTable(mode==='annual'?[selected]:periodReports);
 }
 
 function renderKpis(x){
-  const periodPayroll=x.dartSalaryTotal;
   const operatingMargin=ratio(x.operatingIncome,x.revenue);
-  const laborCostRatio=periodPayroll?ratio(periodPayroll,x.revenue):null;
-  const laborRoi=periodPayroll&&x.operatingIncome!=null?(x.operatingIncome+periodPayroll)/periodPayroll*100:null;
   $('revenue').textContent=money(x.revenue);$('operatingIncome').textContent=money(x.operatingIncome);$('netIncome').textContent=money(x.netIncome);
-  $('operatingMargin').textContent=pct(operatingMargin);$('revenuePerEmployee').textContent=dashboard.headcount&&x.revenue!=null?per(x.revenue/dashboard.headcount):'-';
-  $('dartAverageSalary').textContent=x.dartAverageSalary==null?'-':per(x.dartAverageSalary);
-  $('laborCostRatio').textContent=pct(laborCostRatio);$('laborRoi').textContent=pct(laborRoi);$('reportPeriod').textContent=`${x.businessYear}년 ${x.reportName}`;
+  $('operatingMargin').textContent=pct(operatingMargin);$('reportPeriod').textContent=`${x.businessYear}년 ${x.reportName}`;
   $('dartStatus').textContent=`${x.businessYear} ${x.reportName} · ${x.fsDiv==='CFS'?'연결':'별도'}`;
 }
 
@@ -76,6 +71,29 @@ function renderChart(rows){
     ${points('revenue','#3978f6')}${points('operatingIncome','#35b7ca')}
     ${rows.map((r,i)=>`<text x="${x(i)}" y="${height-10}" text-anchor="middle">${label(r)}</text>`).join('')}
   </svg>`;
+}
+
+function renderHrCharts(rows){
+  const productivity=rows.map(x=>({...x,revenuePerEmployee:dashboard.headcount&&x.revenue!=null?x.revenue/dashboard.headcount/10000:null,averageSalary:x.dartAverageSalary==null?null:x.dartAverageSalary/10000}));
+  const efficiency=rows.map(x=>({...x,laborCostRatio:x.dartSalaryTotal?ratio(x.dartSalaryTotal,x.revenue):null,laborRoi:x.dartSalaryTotal&&x.operatingIncome!=null?(x.operatingIncome+x.dartSalaryTotal)/x.dartSalaryTotal*100:null}));
+  metricChart('productivityChart',productivity,[{key:'revenuePerEmployee',name:'인당 매출',color:'#3978f6'},{key:'averageSalary',name:'평균 급여',color:'#8b6fd6'}],'만원');
+  metricChart('laborEfficiencyChart',efficiency,[{key:'laborCostRatio',name:'인건비 비율',color:'#f0a43c'},{key:'laborRoi',name:'인건비 투자수익률',color:'#38a47b'}],'%');
+}
+
+function metricChart(id,rows,series,unit){
+  const available=rows.flatMap(row=>series.map(s=>row[s.key])).filter(v=>v!=null&&Number.isFinite(v));
+  if(!available.length){$(id).innerHTML='<div class="finance-empty">공시 데이터가 없습니다.</div>';return;}
+  const width=620,height=245,left=58,right=18,top=14,bottom=34,plotW=width-left-right,plotH=height-top-bottom;
+  let min=Math.min(0,...available),max=Math.max(0,...available);if(min===max)max=min+1;
+  const y=v=>top+(max-v)/(max-min)*plotH,x=i=>left+(rows.length===1?plotW/2:i*plotW/(rows.length-1));
+  const ticks=Array.from({length:5},(_,i)=>max-(max-min)*i/4);
+  const drawSeries=s=>{
+    const valid=rows.map((row,i)=>({value:row[s.key],i,row})).filter(p=>p.value!=null&&Number.isFinite(p.value));
+    if(!valid.length)return'';
+    const path=valid.map((p,index)=>`${index?'L':'M'} ${x(p.i)} ${y(p.value)}`).join(' ');
+    return `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="3"/>${valid.map(p=>`<circle cx="${x(p.i)}" cy="${y(p.value)}" r="4" fill="${s.color}"><title>${label(p.row)} ${s.name} ${number.format(Math.round(p.value*10)/10)}${unit}</title></circle>`).join('')}`;
+  };
+  $(id).innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img">${ticks.map(v=>`<line x1="${left}" y1="${y(v)}" x2="${width-right}" y2="${y(v)}" stroke="#e8eef5"/><text x="${left-9}" y="${y(v)+4}" text-anchor="end">${number.format(Math.round(v))}</text>`).join('')}<line x1="${left}" y1="${y(0)}" x2="${width-right}" y2="${y(0)}" stroke="#b8c5d4"/>${series.map(drawSeries).join('')}${rows.map((r,i)=>`<text x="${x(i)}" y="${height-8}" text-anchor="middle">${label(r)}</text>`).join('')}</svg>`;
 }
 
 function renderTable(rows){$('reportRows').innerHTML=[...rows].reverse().map(r=>`<tr><td>${r.businessYear} ${r.reportName}</td><td>${r.fsDiv==='CFS'?'연결':'별도'}</td><td>${money(r.revenue)}</td><td>${money(r.operatingIncome)}</td><td>${money(r.netIncome)}</td><td>${money(r.assets)}</td><td>${money(r.liabilities)}</td><td>${money(r.equity)}</td></tr>`).join('');}
