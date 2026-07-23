@@ -1,79 +1,44 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>INNODEP HR Index</title>
-  <link rel="stylesheet" href="./css/style.css?v=20260722-excel1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INNODEP HR Index</title><link rel="stylesheet" href="./css/style.css?v=20260723-employees1">
 </head>
-<body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand"><img src="images/innodep_logo_white.svg" alt="INNODEP"></div>
-      <div class="nav-title">WORKSPACE</div>
-      <a class="nav-item active" href="./index.html"><span class="nav-icon">▦</span>HR 인덱스</a>
-      <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
-      <div class="nav-item"><span class="nav-icon">◇</span>보상 분석</div>
-      <div class="nav-item"><span class="nav-icon">◷</span>근속 분석</div>
-      <div class="source-badge"><strong>데이터 소스</strong><br>서버 로컬 SQLite<br><span id="sourceStatus">불러오는 중...</span></div>
-    </aside>
-
-    <main>
-      <header class="topbar">
-        <div><h1>HR Index DashBoard</h1><p class="subtitle">인력 구성과 보상, 근속 현황을 한눈에 확인합니다.</p></div>
-        <div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div>
-      </header>
-
-      <section class="filters card" id="filterArea" hidden>
-        <select id="deptFilter" aria-label="부서 필터"><option value="">전체 부서</option></select>
-        <select id="gradeFilter" aria-label="직급 필터"><option value="">전체 직급</option></select>
-        <select id="genderFilter" aria-label="성별 필터"><option value="">전체 성별</option></select>
-        <input class="search" id="searchInput" type="search" placeholder="이름, 부서, 직책 검색" aria-label="검색">
-        <button class="reset" id="resetBtn">초기화</button>
-      </section>
-
-      <section id="dashboard" hidden>
-        <div class="kpis">
-          <article class="card kpi"><div class="kpi-label">총 인원</div><div class="kpi-value" id="totalPeople">-</div><div class="kpi-note" id="peopleNote">현재 조회 기준</div></article>
-          <article class="card kpi"><div class="kpi-label">평균 연령</div><div class="kpi-value"><span id="avgAge">-</span><span class="kpi-unit">세</span></div><div class="kpi-note" id="ageNote">연령 범위</div></article>
-          <article class="card kpi"><div class="kpi-label">평균 월 임금</div><div class="kpi-value"><span id="avgSalary">-</span><span class="kpi-unit">만원</span></div><div class="kpi-note" id="salaryNote">중앙값</div></article>
-          <article class="card kpi"><div class="kpi-label">평균 근속연수</div><div class="kpi-value"><span id="avgTenure">-</span><span class="kpi-unit">년</span></div><div class="kpi-note" id="tenureNote">장기근속 비중</div></article>
-        </div>
-
-        <div class="grid">
-          <article class="card chart-card"><div class="card-head"><h2 class="card-title">부서별 인원</h2><span class="card-caption">HEADCOUNT</span></div><div class="bar-chart" id="deptChart"></div></article>
-          <article class="card chart-card"><div class="card-head"><h2 class="card-title">성별 구성</h2><span class="card-caption">GENDER</span></div><div id="genderChart"></div></article>
-          <article class="card chart-card"><div class="card-head"><h2 class="card-title">월 임금 분포</h2><span class="card-caption">10,000 KRW</span></div><div class="histogram" id="salaryChart"></div></article>
-        </div>
-
-        <article class="card table-card">
-          <div class="table-head"><h2 class="card-title">사원 현황 <span class="count" id="resultCount"></span></h2><div class="employee-actions" id="employeeActions" hidden><span class="import-status" id="importStatus">Excel에서 표를 복사해 일괄 반영할 수 있습니다.</span><button class="data-button" id="exportEmployeesBtn">CSV 내보내기</button><button class="data-button data-button-primary" id="pasteEmployeesBtn">Excel 붙여넣기</button></div></div>
-          <div class="table-scroll">
-            <table><thead><tr>
-              <th data-key="이름">사원명</th><th data-key="부서명">부서</th><th data-key="직급">직급</th><th data-key="직책">직책</th><th data-key="성별">성별</th><th data-key="나이">나이</th><th data-key="임금(월)">월 임금</th><th data-key="근속연수">근속연수</th>
-            </tr></thead><tbody id="employeeRows"></tbody></table>
-          </div>
-          <div class="pagination"><span id="pageInfo"></span><button class="page-btn" id="prevBtn" aria-label="이전 페이지">‹</button><button class="page-btn" id="nextBtn" aria-label="다음 페이지">›</button></div>
-        </article>
-      </section>
-
-      <section class="card load-state" id="loadState">
-        <h2>사원 데이터를 불러오는 중입니다</h2>
-        <p id="loadMessage">잠시만 기다려 주세요.</p>
-      </section>
-    </main>
-  </div>
-
-  <dialog class="paste-dialog" id="pasteDialog">
-    <form method="dialog" id="pasteForm">
-      <div class="paste-dialog-head"><div><span class="dialog-kicker">BULK EDIT</span><h2>Excel 표 일괄 반영</h2></div><button class="dialog-close" id="closePasteBtn" type="button" aria-label="닫기">×</button></div>
-      <p class="paste-guide">CSV를 Excel에서 열고 머리글을 포함한 표 전체를 복사한 다음 아래 칸에서 <strong>Ctrl+V</strong>를 누르세요. 직원 ID가 있는 행은 수정되고, ID가 빈 행은 추가됩니다.</p>
-      <textarea id="pasteArea" spellcheck="false" placeholder="여기를 클릭하고 Ctrl+V로 붙여넣으세요.&#10;&#10;직원 ID    회사명    부서명    사원명    직급    직책    성별    나이    월 임금    근속연수"></textarea>
-      <p class="paste-summary" id="pasteSummary">붙여넣은 데이터가 없습니다.</p>
-      <div class="paste-dialog-actions"><button class="data-button" id="cancelPasteBtn" type="button">취소</button><button class="data-button data-button-primary" type="submit" id="applyPasteBtn" disabled>DB에 반영</button></div>
-    </form>
-  </dialog>
-
-  <script src="./js/dashboard.js?v=20260722-login1"></script>
-</body>
-</html>
+<body><div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><img src="images/innodep_logo_white.svg" alt="INNODEP"></div><div class="nav-title">WORKSPACE</div>
+    <a class="nav-item active" href="./index.html"><span class="nav-icon">▦</span>HR 인덱스</a>
+    <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
+    <div class="source-badge"><strong>데이터 소스</strong><br>서버 로컬 SQLite<br><span id="sourceStatus">불러오는 중...</span></div>
+  </aside>
+  <main>
+    <header class="topbar"><div><h1>HR Index Dashboard</h1><p class="subtitle">사원명부 기준 인력 현황을 확인합니다.</p></div><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
+    <section class="filters card" id="filterArea" hidden>
+      <select id="workplaceFilter"><option value="">전체 사업장</option></select><select id="deptFilter"><option value="">전체 부서</option></select>
+      <select id="genderFilter"><option value="">전체 성별</option></select><input class="search" id="searchInput" type="search" placeholder="사번, 성명, 부서, 직책 검색"><button class="reset" id="resetBtn">초기화</button>
+    </section>
+    <section id="dashboard" hidden>
+      <div class="kpis">
+        <article class="card kpi"><div class="kpi-label">조회 인원</div><div class="kpi-value" id="totalPeople">-</div><div class="kpi-note" id="peopleNote">전체 대비</div></article>
+        <article class="card kpi"><div class="kpi-label">재직 인원</div><div class="kpi-value" id="activePeople">-</div><div class="kpi-note">퇴사일 미도래 기준</div></article>
+        <article class="card kpi"><div class="kpi-label">올해 입사 인원</div><div class="kpi-value" id="hiresThisYear">-</div><div class="kpi-note">입사일자 기준</div></article>
+        <article class="card kpi"><div class="kpi-label">올해 퇴사 예정인원</div><div class="kpi-value" id="terminationsThisYear">-</div><div class="kpi-note">오늘 이후 퇴사일자 기준</div></article>
+      </div>
+      <div class="grid">
+        <article class="card chart-card"><div class="card-head"><h2 class="card-title">부서별 인원</h2><span class="card-caption">HEADCOUNT</span></div><div class="bar-chart" id="deptChart"></div></article>
+        <article class="card chart-card"><div class="card-head"><h2 class="card-title">성별 구성</h2><span class="card-caption">GENDER</span></div><div id="genderChart"></div></article>
+        <article class="card chart-card"><div class="card-head"><h2 class="card-title">직군</h2><span class="card-caption">JOB GROUP</span></div><div id="jobGroupChart"></div></article>
+      </div>
+      <article class="card table-card"><div class="table-head"><h2 class="card-title">사원 현황 <span class="count" id="resultCount"></span></h2><div class="employee-actions" id="employeeActions" hidden><span class="import-status" id="importStatus">Excel 표를 복사해 반영할 수 있습니다.</span><button class="data-button" id="exportEmployeesBtn">CSV 내보내기</button><button class="data-button data-button-primary" id="pasteEmployeesBtn">Excel 붙여넣기</button></div></div>
+        <div class="table-scroll"><table><thead><tr><th data-key="workplace">사업장</th><th data-key="parentDepartment">상위부서</th><th data-key="department">부서</th><th data-key="employeeNumber">사번</th><th data-key="name">성명</th><th data-key="position">직위</th><th data-key="workShift">근무조</th><th data-key="duty">직책</th><th data-key="jobGroup">직군</th><th data-key="employmentType">사원구분</th><th data-key="gender">성별</th><th data-key="hireDate">입사일자</th><th data-key="terminationDate">퇴사일자</th></tr></thead><tbody id="employeeRows"></tbody></table></div>
+        <div class="pagination"><span id="pageInfo"></span><button class="page-btn" id="prevBtn">‹</button><button class="page-btn" id="nextBtn">›</button></div>
+      </article>
+    </section>
+    <section class="card load-state" id="loadState"><h2>사원 데이터를 불러오는 중입니다</h2><p id="loadMessage">잠시만 기다려 주세요.</p></section>
+  </main>
+</div>
+<dialog class="paste-dialog" id="pasteDialog"><form method="dialog" id="pasteForm"><div class="paste-dialog-head"><div><span class="dialog-kicker">BULK EDIT</span><h2>Excel 표 일괄 반영</h2></div><button class="dialog-close" id="closePasteBtn" type="button">×</button></div>
+  <p class="paste-guide">아래 머리글 13개를 포함해 Excel 표 전체를 복사한 뒤 붙여넣으세요. <strong>사번만 필수</strong>이며, 같은 사번은 수정되고 새 사번은 추가됩니다.</p>
+  <textarea id="pasteArea" spellcheck="false" placeholder="사업장    상위부서    부서    사번    성명    직위    근무조    직책    직군    사원구분    성별    입사일자    퇴사일자"></textarea><p class="paste-summary" id="pasteSummary">붙여넣은 데이터가 없습니다.</p>
+  <div class="paste-dialog-actions"><button class="data-button" id="cancelPasteBtn" type="button">취소</button><button class="data-button data-button-primary" type="submit" id="applyPasteBtn" disabled>DB에 반영</button></div></form></dialog>
+<script src="./js/dashboard.js?v=20260723-employees1"></script></body></html>

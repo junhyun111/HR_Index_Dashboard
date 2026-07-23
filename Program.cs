@@ -1,7 +1,6 @@
 using HRDashboard.Configuration;
 using HRDashboard.Data;
 using HRDashboard.Endpoints;
-using HRDashboard.Models;
 using HRDashboard.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -110,31 +109,6 @@ app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(Path.Combine(app.Environment.WebRootPath, "images")),
     RequestPath = "/images"
-});
-
-app.Use(async (context, next) =>
-{
-    await next();
-    if (!context.Request.Path.StartsWithSegments("/api") || context.User.Identity?.IsAuthenticated != true)
-        return;
-
-    try
-    {
-        var db = context.RequestServices.GetRequiredService<AppDbContext>();
-        db.AuditEvents.Add(new AuditEvent
-        {
-            OccurredAtUtc = DateTimeOffset.UtcNow,
-            UserName = context.User.Identity.Name ?? "unknown",
-            Action = context.Request.Method,
-            Path = context.Request.Path + context.Request.QueryString,
-            StatusCode = context.Response.StatusCode
-        });
-        await db.SaveChangesAsync(context.RequestAborted);
-    }
-    catch (Exception exception)
-    {
-        app.Logger.LogWarning(exception, "감사 로그 저장에 실패했습니다.");
-    }
 });
 
 app.MapDashboardEndpoints();

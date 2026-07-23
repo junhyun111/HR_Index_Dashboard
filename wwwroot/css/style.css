@@ -77,6 +77,8 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .donut-center { position: absolute; z-index: 1; inset: 0; display: grid; place-content: center; text-align: center; }
 .donut-center strong { font-size: 25px; }
 .donut-center span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.pie-layout { min-height: 185px; display: flex; align-items: center; justify-content: center; gap: 24px; }
+.pie-layout .legend { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .legend { display: flex; justify-content: center; gap: 22px; margin-top: 16px; color: #617287; font-size: 11px; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
 .dot-male { background: var(--blue); }

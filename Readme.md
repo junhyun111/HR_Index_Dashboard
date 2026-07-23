@@ -39,7 +39,7 @@ dotnet run
 
 ## 보안
 
-로그인 쿠키는 HttpOnly와 SameSite=Lax로 설정되며 로그인 시도는 IP별 분당 5회로 제한됩니다. 인증된 API 호출은 SQLite의 `AuditEvents` 테이블에 기록됩니다.
+로그인 쿠키는 HttpOnly와 SameSite=Lax로 설정되며 로그인 시도는 IP별 분당 5회로 제한됩니다.
 
 CSV 가져오기는 `직원 ID`가 있는 행을 수정하고 ID가 빈 행을 새 직원으로 추가합니다. 파일에서 삭제한 행은 DB에서 삭제되지 않습니다.
 

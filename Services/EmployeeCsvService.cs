@@ -7,137 +7,28 @@ namespace HRDashboard.Services;
 
 public sealed class EmployeeCsvService
 {
-    private static readonly string[] Headers =
-        ["직원 ID", "회사명", "부서명", "사원명", "직급", "직책", "성별", "나이", "월 임금", "근속연수"];
-
-    public byte[] Export(IReadOnlyCollection<Employee> employees, bool includeSalary)
+    public static readonly string[] Headers=["사업장","상위부서","부서","사번","성명","직위","근무조","직책","직군","사원구분","성별","입사일자","퇴사일자"];
+    public byte[] Export(IReadOnlyCollection<Employee> employees)
     {
-        var csv = new StringBuilder();
-        csv.AppendLine(string.Join(',', Headers.Select(Escape)));
-        foreach (var employee in employees)
-        {
-            var values = new[]
-            {
-                employee.Id.ToString(CultureInfo.InvariantCulture), employee.CompanyName,
-                employee.DepartmentName, employee.Name, employee.Grade, employee.Position,
-                employee.Gender, employee.Age.ToString(CultureInfo.InvariantCulture),
-                includeSalary ? employee.MonthlySalary.ToString(CultureInfo.InvariantCulture) : "",
-                employee.YearsOfService.ToString("0.0#", CultureInfo.InvariantCulture)
-            };
-            csv.AppendLine(string.Join(',', values.Select(Escape)));
-        }
-        var content = Encoding.UTF8.GetBytes(csv.ToString());
-        var preamble = Encoding.UTF8.GetPreamble();
-        var result = new byte[preamble.Length + content.Length];
-        Buffer.BlockCopy(preamble, 0, result, 0, preamble.Length);
-        Buffer.BlockCopy(content, 0, result, preamble.Length, content.Length);
-        return result;
+        var csv=new StringBuilder(); csv.AppendLine(string.Join(',',Headers.Select(Escape)));
+        foreach(var x in employees) { string[] values=[x.Workplace??"",x.ParentDepartment??"",x.Department??"",x.EmployeeNumber,x.Name??"",x.Position??"",x.WorkShift??"",x.Duty??"",x.JobGroup??"",x.EmploymentType??"",x.Gender??"",Date(x.HireDate),Date(x.TerminationDate)]; csv.AppendLine(string.Join(',',values.Select(Escape))); }
+        return Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
     }
-
-    public EmployeeImportResult Parse(Stream stream, bool canEditSalary)
+    public EmployeeImportResult Parse(Stream stream) { using var p=new TextFieldParser(stream,Encoding.UTF8,true,true){TextFieldType=FieldType.Delimited,HasFieldsEnclosedInQuotes=true,TrimWhiteSpace=false};p.SetDelimiters(",");return Parse(p,"CSV"); }
+    public EmployeeImportResult ParseClipboard(string text) { if(string.IsNullOrWhiteSpace(text))throw new EmployeeCsvException("붙여넣은 표가 비어 있습니다.");using var p=new TextFieldParser(new StringReader(text)){TextFieldType=FieldType.Delimited,HasFieldsEnclosedInQuotes=true,TrimWhiteSpace=false};p.SetDelimiters("\t");return Parse(p,"붙여넣은 표"); }
+    private static EmployeeImportResult Parse(TextFieldParser parser,string source)
     {
-        using var parser = new TextFieldParser(stream, Encoding.UTF8, detectEncoding: true, leaveOpen: true)
-        {
-            TextFieldType = FieldType.Delimited,
-            HasFieldsEnclosedInQuotes = true,
-            TrimWhiteSpace = false
-        };
-        parser.SetDelimiters(",");
-        return ParseDelimited(parser, canEditSalary, "CSV");
+        var headers=parser.ReadFields()??throw new EmployeeCsvException($"{source}가 비어 있습니다.");if(headers.Length>0)headers[0]=headers[0].TrimStart('\uFEFF');
+        var map=headers.Select((v,i)=>(v:v.Trim(),i)).GroupBy(x=>x.v).ToDictionary(x=>x.Key,x=>x.First().i);
+        var missing=Headers.Where(x=>!map.ContainsKey(x)).ToArray();if(missing.Length>0)throw new EmployeeCsvException($"필수 머리글이 없습니다: {string.Join(", ",missing)}");
+        var rows=new List<EmployeeImportRow>();var errors=new List<string>();var n=1;
+        while(!parser.EndOfData){n++;try{var f=parser.ReadFields()??[];if(f.All(string.IsNullOrWhiteSpace))continue;string V(string h)=>map[h]<f.Length?f[map[h]].Trim():"";string? O(string h,int max){var v=V(h);if(v.Length>max)throw new EmployeeCsvException($"{n}행 [{h}]: {max}자를 초과했습니다.");return v.Length==0?null:v;}var no=V("사번");if(no.Length==0)throw new EmployeeCsvException($"{n}행 [사번]: 값이 비어 있습니다.");if(no.Length>50)throw new EmployeeCsvException($"{n}행 [사번]: 50자를 초과했습니다.");rows.Add(new(no,O("사업장",100),O("상위부서",100),O("부서",100),O("성명",100),O("직위",50),O("근무조",50),O("직책",50),O("직군",50),O("사원구분",50),O("성별",20),ParseDate(V("입사일자"),n,"입사일자"),ParseDate(V("퇴사일자"),n,"퇴사일자")));}catch(Exception e)when(e is EmployeeCsvException or MalformedLineException){errors.Add(e.Message);}}
+        if(errors.Count>0)throw new EmployeeCsvException(string.Join("\n",errors.Take(20)));if(rows.Count==0)throw new EmployeeCsvException("반영할 사원 데이터가 없습니다.");var dup=rows.GroupBy(x=>x.EmployeeNumber,StringComparer.OrdinalIgnoreCase).Where(x=>x.Count()>1).Select(x=>x.Key).ToArray();if(dup.Length>0)throw new EmployeeCsvException($"사번이 중복되었습니다: {string.Join(", ",dup.Take(20))}");return new(rows);
     }
-
-    public EmployeeImportResult ParseClipboard(string text, bool canEditSalary)
-    {
-        if (string.IsNullOrWhiteSpace(text)) throw new EmployeeCsvException("붙여넣은 표가 비어 있습니다.");
-        using var reader = new StringReader(text);
-        using var parser = new TextFieldParser(reader)
-        {
-            TextFieldType = FieldType.Delimited,
-            HasFieldsEnclosedInQuotes = true,
-            TrimWhiteSpace = false
-        };
-        parser.SetDelimiters("\t");
-        return ParseDelimited(parser, canEditSalary, "붙여넣은 표");
-    }
-
-    private static EmployeeImportResult ParseDelimited(TextFieldParser parser, bool canEditSalary, string sourceName)
-    {
-        string[]? headers;
-        try { headers = parser.ReadFields(); }
-        catch (MalformedLineException exception) { throw new EmployeeCsvException($"{sourceName} 머리글 형식이 잘못되었습니다: {exception.Message}"); }
-        if (headers is null) throw new EmployeeCsvException($"{sourceName}가 비어 있습니다.");
-        if (headers.Length > 0) headers[0] = headers[0].TrimStart('\uFEFF');
-        var headerMap = headers.Select((header, index) => new { Header = header.Trim(), Index = index })
-            .GroupBy(x => x.Header, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(x => x.Key, x => x.First().Index, StringComparer.OrdinalIgnoreCase);
-        var required = canEditSalary ? Headers : Headers.Where(x => x != "월 임금");
-        var missing = required.Where(header => !headerMap.ContainsKey(header)).ToArray();
-        if (missing.Length > 0) throw new EmployeeCsvException($"필수 열이 없습니다: {string.Join(", ", missing)}");
-
-        var rows = new List<EmployeeImportRow>();
-        var errors = new List<string>();
-        var rowNumber = 1;
-        while (!parser.EndOfData)
-        {
-            rowNumber++;
-            try
-            {
-                var fields = parser.ReadFields() ?? [];
-                if (fields.All(string.IsNullOrWhiteSpace)) continue;
-                rows.Add(ParseRow(fields, rowNumber, headerMap, canEditSalary));
-            }
-            catch (MalformedLineException exception) { errors.Add($"{rowNumber}행: 표 형식이 잘못되었습니다. {exception.Message}"); }
-            catch (EmployeeCsvException exception) { errors.Add(exception.Message); }
-        }
-        if (errors.Count > 0) throw new EmployeeCsvException(string.Join("\n", errors.Take(20)));
-        if (rows.Count == 0) throw new EmployeeCsvException("반영할 사원 데이터가 없습니다.");
-        var duplicateIds = rows.Where(x => x.Id.HasValue).GroupBy(x => x.Id).Where(x => x.Count() > 1).Select(x => x.Key).ToArray();
-        if (duplicateIds.Length > 0) throw new EmployeeCsvException($"직원 ID가 중복되었습니다: {string.Join(", ", duplicateIds)}");
-        return new EmployeeImportResult(rows);
-    }
-
-    private static EmployeeImportRow ParseRow(string[] fields, int rowNumber,
-        IReadOnlyDictionary<string, int> columns, bool canEditSalary)
-    {
-        string Value(string header) => columns[header] < fields.Length ? fields[columns[header]].Trim() : "";
-        string Text(string header, int maxLength)
-        {
-            var value = Value(header);
-            if (string.IsNullOrWhiteSpace(value)) throw Error(header, "값이 비어 있습니다.");
-            if (value.Length > maxLength) throw Error(header, $"{maxLength}자를 초과했습니다.");
-            return value;
-        }
-        long? id = null;
-        var idText = Value("직원 ID");
-        if (!string.IsNullOrEmpty(idText))
-        {
-            if (!long.TryParse(idText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedId) || parsedId <= 0)
-                throw Error("직원 ID", "양의 정수여야 합니다.");
-            id = parsedId;
-        }
-        if (!int.TryParse(Value("나이"), out var age) || age is < 15 or > 100) throw Error("나이", "15~100 사이의 정수여야 합니다.");
-        if (!double.TryParse(Value("근속연수"), NumberStyles.Float, CultureInfo.InvariantCulture, out var tenure) || tenure is < 0 or > 80)
-            throw Error("근속연수", "0~80 사이의 숫자여야 합니다.");
-        long? salary = null;
-        if (canEditSalary)
-        {
-            var salaryText = Value("월 임금").Replace(",", "");
-            if (!long.TryParse(salaryText, out var parsedSalary) || parsedSalary < 0) throw Error("월 임금", "0 이상의 정수여야 합니다.");
-            salary = parsedSalary;
-        }
-        return new EmployeeImportRow(id, Text("회사명", 100), Text("부서명", 100), Text("사원명", 50),
-            Text("직급", 30), Text("직책", 50), Text("성별", 20), age, salary, tenure);
-        EmployeeCsvException Error(string column, string message) => new($"{rowNumber}행 [{column}]: {message}");
-    }
-
-    private static string Escape(string? value)
-    {
-        value ??= "";
-        return value.IndexOfAny([',', '"', '\r', '\n']) >= 0 ? $"\"{value.Replace("\"", "\"\"")}\"" : value;
-    }
+    private static DateTime? ParseDate(string v,int row,string col){if(v.Length==0)return null;string[] formats=["yyyy-MM-dd","yyyy.MM.dd","yyyy/MM/dd","yyyyMMdd","M/d/yyyy","MM/dd/yyyy"];if(DateTime.TryParseExact(v,formats,CultureInfo.InvariantCulture,DateTimeStyles.None,out var d)||DateTime.TryParse(v,CultureInfo.GetCultureInfo("ko-KR"),DateTimeStyles.None,out d))return d.Date;throw new EmployeeCsvException($"{row}행 [{col}]: 날짜 형식을 확인하세요 ({v}).");}
+    private static string Date(DateTime? d)=>d?.ToString("yyyy-MM-dd")??"";
+    private static string Escape(string v)=>v.IndexOfAny([',','"','\r','\n'])>=0?$"\"{v.Replace("\"","\"\"")}\"":v;
 }
-
 public sealed record EmployeeImportResult(IReadOnlyList<EmployeeImportRow> Rows);
-public sealed record EmployeeImportRow(long? Id, string CompanyName, string DepartmentName, string Name,
-    string Grade, string Position, string Gender, int Age, long? MonthlySalary, double YearsOfService);
-public sealed class EmployeeCsvException(string message) : Exception(message);
+public sealed record EmployeeImportRow(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? HireDate,DateTime? TerminationDate);
+public sealed class EmployeeCsvException(string message):Exception(message);
