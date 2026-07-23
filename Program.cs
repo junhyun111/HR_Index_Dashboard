@@ -134,6 +134,15 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
+    var connection = db.Database.GetDbConnection();
+    await connection.OpenAsync();
+    await using var columnsCommand = connection.CreateCommand();
+    columnsCommand.CommandText = "PRAGMA table_info('Employees')";
+    var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    await using (var reader = await columnsCommand.ExecuteReaderAsync())
+        while (await reader.ReadAsync()) columns.Add(reader.GetString(1));
+    if (!columns.Contains("BirthDate"))
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN BirthDate TEXT NULL");
 }
 
 app.Run();

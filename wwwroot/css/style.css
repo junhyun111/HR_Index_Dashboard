@@ -49,7 +49,7 @@ select, .search { width: 100%; height: 38px; padding: 0 12px; border: 1px solid 
 select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(57,120,246,.1); }
 .reset { height: 38px; padding: 0 15px; border: 0; border-radius: 8px; color: #496078; background: #edf2f7; cursor: pointer; }
 
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 16px; }
 .card { border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow); }
 .kpi { position: relative; overflow: hidden; min-height: 118px; padding: 21px 22px; }
 .kpi-label { color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -57,8 +57,15 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .kpi-unit { margin-left: 4px; color: #8290a1; font-size: 12px; font-weight: 600; }
 .kpi-note { margin-top: 7px; color: #8a98a9; font-size: 11px; }
 
-.grid { display: grid; grid-template-columns: 1.3fr .8fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: 1.3fr .8fr 1fr; grid-template-rows: repeat(2, minmax(145px, auto)); gap: 16px; margin-bottom: 16px; }
 .chart-card { min-height: 305px; padding: 20px; }
+.chart-department { grid-column: 1; grid-row: 1 / 3; }
+.chart-compact { min-height: 145px; padding: 14px 16px; }
+.chart-compact .card-head { margin-bottom: 8px; }
+.chart-gender { grid-column: 2; grid-row: 1; }
+.chart-job { grid-column: 2; grid-row: 2; }
+.chart-tenure { grid-column: 3; grid-row: 1; }
+.chart-wage { grid-column: 3; grid-row: 2; }
 .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .card-title { margin: 0; font-size: 14px; font-weight: 800; }
 .card-caption { color: #97a3b1; font-size: 10px; }
@@ -77,8 +84,21 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .donut-center { position: absolute; z-index: 1; inset: 0; display: grid; place-content: center; text-align: center; }
 .donut-center strong { font-size: 25px; }
 .donut-center span { margin-top: 3px; color: var(--muted); font-size: 10px; }
-.pie-layout { min-height: 185px; display: flex; align-items: center; justify-content: center; gap: 24px; }
-.pie-layout .legend { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.pie-layout { min-height: 185px; display: grid; grid-template-columns: 164px minmax(90px, auto); align-items: center; justify-content: center; column-gap: 24px; }
+.pie-layout .donut { grid-column: 1; }
+.pie-layout > .legend { grid-column: 2; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; margin-top: 0; }
+.pie-layout > .legend span { display: block; white-space: nowrap; }
+.chart-compact .pie-layout { min-height: 205px; grid-template-columns: 150px minmax(90px, auto); column-gap: 20px; }
+.chart-compact .donut { width: 150px; height: 150px; }
+.chart-compact .donut::after { inset: 22px; }
+.chart-compact .donut-center strong { font-size: 24px; }
+.chart-compact .donut-center span { font-size: 9px; }
+.chart-compact .pie-layout > .legend { gap: 7px; font-size: 11px; }
+.compact-bars { width: 100%; min-height: 205px; align-content: center; gap: 14px; }
+.compact-bars .bar-row { width: 100%; }
+.compact-bars .bar-row { grid-template-columns: 68px 1fr 30px; gap: 10px; font-size: 11px; }
+.compact-bars .bar-track { height: 10px; }
+.chart-compact .chart-empty { padding: 38px 0; }
 .legend { display: flex; justify-content: center; gap: 22px; margin-top: 16px; color: #617287; font-size: 11px; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
 .dot-male { background: var(--blue); }
@@ -131,7 +151,9 @@ tbody tr:hover { background: #f7faff; }
 
 @media (max-width: 1120px) {
   .grid { grid-template-columns: 1fr 1fr; }
-  .grid .chart-card:first-child { grid-column: 1 / -1; }
+  .chart-department { grid-column: 1 / -1; grid-row: auto; }
+  .chart-gender, .chart-job, .chart-tenure, .chart-wage { grid-column: auto; grid-row: auto; }
+  .kpis { grid-template-columns: repeat(3, 1fr); }
   .filters { grid-template-columns: repeat(3, 1fr); }
   .filters .search { grid-column: 1 / 3; }
 }
@@ -147,7 +169,7 @@ tbody tr:hover { background: #f7faff; }
   .filters select:first-child, .filters .search { grid-column: 1 / -1; }
   .kpis { grid-template-columns: 1fr 1fr; }
   .grid { grid-template-columns: 1fr; }
-  .grid .chart-card:first-child { grid-column: auto; }
+  .chart-department { grid-column: auto; }
   .table-head { align-items: flex-start; gap: 12px; }
   .employee-actions { flex-wrap: wrap; justify-content: flex-end; }
   .import-status { width: 100%; text-align: right; }

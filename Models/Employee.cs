@@ -14,6 +14,7 @@ public sealed class Employee
     public string? JobGroup { get; set; }
     public string? EmploymentType { get; set; }
     public string? Gender { get; set; }
+    public DateTime? BirthDate { get; set; }
     public DateTime? HireDate { get; set; }
     public DateTime? TerminationDate { get; set; }
 }

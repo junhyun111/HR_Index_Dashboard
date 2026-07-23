@@ -53,7 +53,7 @@ public static class DashboardEndpoints
             else updated++;
             x.Workplace=row.Workplace; x.ParentDepartment=row.ParentDepartment; x.Department=row.Department; x.Name=row.Name;
             x.Position=row.Position; x.WorkShift=row.WorkShift; x.Duty=row.Duty; x.JobGroup=row.JobGroup;
-            x.EmploymentType=row.EmploymentType; x.Gender=row.Gender; x.HireDate=row.HireDate; x.TerminationDate=row.TerminationDate;
+            x.EmploymentType=row.EmploymentType; x.Gender=row.Gender; x.BirthDate=row.BirthDate; x.HireDate=row.HireDate; x.TerminationDate=row.TerminationDate;
         }
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
         return Results.Ok(new { added, updated, total = import.Rows.Count });
@@ -74,9 +74,11 @@ public static class DashboardEndpoints
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department),ct), genders=await Values(db.Employees.Select(x=>x.Gender),ct) },
-            summary=new { totalCount,filteredCount,activeCount=rows.Count(x=>x.TerminationDate is null||x.TerminationDate>=today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
+            summary=new { totalCount,filteredCount,averageAge=AverageAge(rows,today),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
             departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
+            tenureGroups=TenureGroups(rows,today),
+            monthlyWages=Array.Empty<CountResponse>(),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
         });
     }
@@ -88,10 +90,35 @@ public static class DashboardEndpoints
         return trimmed.StartsWith("계약직",StringComparison.OrdinalIgnoreCase) ? "계약직" : trimmed;
     }
 
+    private static double? AverageAge(IEnumerable<Employee> rows,DateTime today)
+    {
+        var ages=rows.Where(x=>x.BirthDate!=null).Select(x=>{var birth=x.BirthDate!.Value.Date;return today.Year-birth.Year-(birth.Date>today.AddYears(-(today.Year-birth.Year))?1:0);}).ToArray();
+        return ages.Length==0?null:Math.Round(ages.Average(),1);
+    }
+
+    private static double? AverageTenure(IEnumerable<Employee> rows,DateTime today)
+    {
+        var years=rows.Where(x=>x.HireDate!=null).Select(x=>(today-x.HireDate!.Value.Date).TotalDays/365.2425).Where(x=>x>=0).ToArray();
+        return years.Length==0?null:Math.Round(years.Average(),1);
+    }
+
+    private static CountResponse[] TenureGroups(IEnumerable<Employee> rows,DateTime today)
+    {
+        var counts=new int[5];
+        foreach(var hire in rows.Where(x=>x.HireDate!=null).Select(x=>x.HireDate!.Value.Date))
+        {
+            var years=(today-hire).TotalDays/365.2425;
+            if(years<0) continue;
+            counts[years<1?0:years<3?1:years<5?2:years<10?3:4]++;
+        }
+        var labels=new[]{"1년 미만","1~3년","3~5년","5~10년","10년 이상"};
+        return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
+    }
+
     private static async Task<string[]> Values(IQueryable<string?> q,CancellationToken ct)=>await q.Where(x=>x!=null&&x!="").Select(x=>x!).Distinct().Order().ToArrayAsync(ct);
     private static List<Employee> Sort(List<Employee> rows,string? sort,string? direction)
     {
-        Func<Employee,object?> key=sort switch { "employeeNumber"=>x=>x.EmployeeNumber,"workplace"=>x=>x.Workplace,"parentDepartment"=>x=>x.ParentDepartment,"department"=>x=>x.Department,"position"=>x=>x.Position,"workShift"=>x=>x.WorkShift,"duty"=>x=>x.Duty,"jobGroup"=>x=>x.JobGroup,"employmentType"=>x=>x.EmploymentType,"gender"=>x=>x.Gender,"hireDate"=>x=>x.HireDate,"terminationDate"=>x=>x.TerminationDate,_=>x=>x.Name };
+        Func<Employee,object?> key=sort switch { "employeeNumber"=>x=>x.EmployeeNumber,"workplace"=>x=>x.Workplace,"parentDepartment"=>x=>x.ParentDepartment,"department"=>x=>x.Department,"position"=>x=>x.Position,"workShift"=>x=>x.WorkShift,"duty"=>x=>x.Duty,"jobGroup"=>x=>x.JobGroup,"employmentType"=>x=>x.EmploymentType,"gender"=>x=>x.Gender,"birthDate"=>x=>x.BirthDate,"hireDate"=>x=>x.HireDate,"terminationDate"=>x=>x.TerminationDate,_=>x=>x.Name };
         return (direction=="desc"?rows.OrderByDescending(key):rows.OrderBy(key)).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
