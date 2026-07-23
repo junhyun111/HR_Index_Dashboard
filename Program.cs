@@ -186,6 +186,16 @@ await using (var scope = app.Services.CreateAsyncScope())
         )
         """);
     await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_FinancialReports_BusinessYear_ReportCode ON FinancialReports (BusinessYear, ReportCode)");
+    var financeColumns=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    await using(var financeCommand=connection.CreateCommand())
+    {
+        financeCommand.CommandText="PRAGMA table_info('FinancialReports')";
+        await using var financeReader=await financeCommand.ExecuteReaderAsync();
+        while(await financeReader.ReadAsync())financeColumns.Add(financeReader.GetString(1));
+    }
+    if(!financeColumns.Contains("DartEmployeeCount"))await db.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN DartEmployeeCount INTEGER NULL");
+    if(!financeColumns.Contains("DartSalaryTotal"))await db.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN DartSalaryTotal INTEGER NULL");
+    if(!financeColumns.Contains("DartAverageSalary"))await db.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN DartAverageSalary INTEGER NULL");
 }
 
 app.Run();

@@ -35,7 +35,7 @@ public static class ManagementEndpoints
             latest=latest==null?null:new{latest.BusinessYear,latest.ReportCode,latest.ReportName,latest.FsDiv,latest.ReceiptNumber,latest.Revenue,latest.OperatingIncome,latest.NetIncome,latest.Assets,latest.Liabilities,latest.Equity,latest.SyncedAtUtc,
                 operatingMargin=Ratio(latest.OperatingIncome,latest.Revenue),debtRatio=Ratio(latest.Liabilities,latest.Equity),revenuePerEmployee=PerPerson(latest.Revenue),operatingIncomePerEmployee=PerPerson(latest.OperatingIncome),
                 laborCostRatio=annualPayroll>0?Ratio(annualPayroll,latest.Revenue):null,laborRoi=annualPayroll>0&&latest.OperatingIncome!=null?(double?)Math.Round((latest.OperatingIncome.Value+annualPayroll)/(double)annualPayroll*100,1):null},
-            reports=reports.Select(x=>new{x.BusinessYear,x.ReportCode,x.ReportName,x.FsDiv,x.ReceiptNumber,x.Revenue,x.OperatingIncome,x.NetIncome,x.Assets,x.Liabilities,x.Equity,x.SyncedAtUtc})
+            reports=reports.Select(x=>new{x.BusinessYear,x.ReportCode,x.ReportName,x.FsDiv,x.ReceiptNumber,x.Revenue,x.OperatingIncome,x.NetIncome,x.Assets,x.Liabilities,x.Equity,x.DartEmployeeCount,x.DartSalaryTotal,x.DartAverageSalary,x.SyncedAtUtc})
         });
     }
 }

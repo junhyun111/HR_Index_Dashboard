@@ -14,5 +14,8 @@ public sealed class FinancialReport
     public long? Assets { get; set; }
     public long? Liabilities { get; set; }
     public long? Equity { get; set; }
+    public int? DartEmployeeCount { get; set; }
+    public long? DartSalaryTotal { get; set; }
+    public long? DartAverageSalary { get; set; }
     public DateTime SyncedAtUtc { get; set; }
 }
