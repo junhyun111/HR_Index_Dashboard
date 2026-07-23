@@ -79,7 +79,7 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 @keyframes grow { from { transform: scaleX(0); } }
 
 .donut-wrap { display: grid; place-items: center; padding-top: 3px; }
-.donut { position: relative; width: 164px; height: 164px; border-radius: 50%; background: conic-gradient(var(--blue) 0 var(--male), var(--cyan) var(--male) 100%); }
+.donut { position: relative; width: 164px; height: 164px; border-radius: 50%; background: conic-gradient(var(--blue) 0 var(--male), var(--cyan) var(--male) 100%); animation: donut-enter 1.05s cubic-bezier(.2,.8,.2,1) both; }
 .donut::after { content: ""; position: absolute; inset: 23px; border-radius: 50%; background: white; }
 .donut-center { position: absolute; z-index: 1; inset: 0; display: grid; place-content: center; text-align: center; }
 .donut-center strong { font-size: 25px; }
@@ -116,6 +116,8 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .hist-bar { width: 72%; min-height: 2px; border-radius: 5px 5px 0 0; background: linear-gradient(#39b7c9, #74d1dc); animation: rise .6s ease both; }
 .hist-label { height: 18px; color: #8391a1; font-size: 9px; white-space: nowrap; }
 @keyframes rise { from { height: 0 !important; } }
+@keyframes donut-enter { from { opacity: 0; transform: scale(.55) rotate(-35deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@media (prefers-reduced-motion: reduce) { .donut, .bar-fill, .hist-bar, .wage-bar { animation: none !important; } }
 
 .table-card { overflow: hidden; }
 .table-head { display: flex; justify-content: space-between; align-items: center; padding: 19px 21px; border-bottom: 1px solid var(--line); }

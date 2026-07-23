@@ -140,7 +140,7 @@ function groupedBarChart(id,rows,series,unit,width){
   const bars=rows.map((row,rowIndex)=>series.map((s,seriesIndex)=>{
     const value=s.value(row);if(value==null||!Number.isFinite(value))return'';
     const barX=center(rowIndex)+(seriesIndex-(series.length-1)/2)*(barW+4)-barW/2,barY=Math.min(y(value),yZero),barH=Math.max(2,Math.abs(y(value)-yZero));
-    return `<rect x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="4" fill="${s.color}"><title>${label(row)} ${s.name} ${s.format(value)}</title></rect>`;
+    return `<rect class="chart-bar ${value<0?'negative':'positive'}" x="${barX}" y="${barY}" width="${barW}" height="${barH}" rx="4" fill="${s.color}" style="animation-delay:${rowIndex*90+seriesIndex*55}ms"><title>${label(row)} ${s.name} ${s.format(value)}</title></rect>`;
   }).join('')).join('');
   $(id).innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img">
     ${ticks.map(v=>`<line x1="${left}" y1="${y(v)}" x2="${width-right}" y2="${y(v)}" stroke="#e8eef5"/><text x="${left-9}" y="${y(v)+4}" text-anchor="end">${number.format(Math.round(v))}</text>`).join('')}
