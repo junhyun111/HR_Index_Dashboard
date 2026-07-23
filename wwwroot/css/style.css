@@ -161,9 +161,16 @@ tbody tr:hover { background: #f7faff; }
 .person { display: flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 700; }
 .avatar { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; color: #315f9e; background: #e8f0ff; font-size: 10px; }
 .pill { display: inline-block; padding: 4px 8px; border-radius: 20px; color: #276d5a; background: #e8f7f2; font-size: 10px; }
-.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 13px 19px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
-.page-btn { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); cursor: pointer; }
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 19px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.page-size { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.page-size select { width: auto; height: 30px; padding: 0 25px 0 9px; font-size: 11px; }
+.page-controls { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+.page-btn { min-width: 30px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font-size: 11px; cursor: pointer; }
+.page-btn.active { border-color: var(--blue); color: white; background: var(--blue); font-weight: 800; }
+.page-btn.page-edge { padding: 0 10px; }
 .page-btn:disabled { opacity: .35; cursor: default; }
+.page-btn.active:disabled { opacity: 1; }
+.page-ellipsis { min-width: 22px; color: #8a98a9; text-align: center; }
 .table-empty { padding: 45px; color: #8795a5; text-align: center; }
 .chart-empty { padding: 70px 0; color: #94a0ae; font-size: 12px; text-align: center; }
 
@@ -195,6 +202,8 @@ tbody tr:hover { background: #f7faff; }
   .table-head { align-items: flex-start; gap: 12px; }
   .employee-actions { flex-wrap: wrap; justify-content: flex-end; }
   .import-status { width: 100%; text-align: right; }
+  .pagination { align-items: flex-start; flex-direction: column; }
+  .page-controls { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
 }
 @media (max-width: 460px) {
   .kpis { grid-template-columns: 1fr; }
