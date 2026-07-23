@@ -6,3 +6,4 @@ App_Data/*.db-wal
 App_Data/keys/
 *.user
 *.suo
+.env

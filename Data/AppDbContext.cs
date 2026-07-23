@@ -6,6 +6,7 @@ namespace HRDashboard.Data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<EmployeeDataState> EmployeeDataStates => Set<EmployeeDataState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,6 +29,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             entity.HasIndex(x => x.EmployeeNumber).IsUnique();
             entity.HasIndex(x => x.Department);
             entity.HasIndex(x => x.Name);
+        });
+        modelBuilder.Entity<EmployeeDataState>(entity =>
+        {
+            entity.ToTable("EmployeeDataState");
+            entity.HasKey(x => x.Id);
         });
     }
 }

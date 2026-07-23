@@ -34,7 +34,7 @@ public static class DashboardEndpoints
         var error=Validate(request); if(error!=null) return Results.BadRequest(new { message=error });
         var number=request.EmployeeNumber.Trim();
         if(await db.Employees.AnyAsync(x=>x.EmployeeNumber==number,ct)) return Results.Conflict(new { message="이미 등록된 사번입니다." });
-        var employee=new Employee { EmployeeNumber=number }; SetEmployee(employee,request); db.Employees.Add(employee); await db.SaveChangesAsync(ct);
+        var employee=new Employee { EmployeeNumber=number }; SetEmployee(employee,request); db.Employees.Add(employee); await TouchEmployeeData(db,ct); await db.SaveChangesAsync(ct);
         return Results.Created($"/api/employees/{employee.Id}",employee);
     }
 
@@ -44,13 +44,13 @@ public static class DashboardEndpoints
         var employee=await db.Employees.FindAsync([id],ct); if(employee==null) return Results.NotFound(new { message="직원을 찾을 수 없습니다." });
         var number=request.EmployeeNumber.Trim();
         if(await db.Employees.AnyAsync(x=>x.Id!=id&&x.EmployeeNumber==number,ct)) return Results.Conflict(new { message="이미 등록된 사번입니다." });
-        SetEmployee(employee,request); await db.SaveChangesAsync(ct); return Results.Ok(employee);
+        SetEmployee(employee,request); await TouchEmployeeData(db,ct); await db.SaveChangesAsync(ct); return Results.Ok(employee);
     }
 
     private static async Task<IResult> DeleteEmployee(long id, AppDbContext db, CancellationToken ct)
     {
         var employee=await db.Employees.FindAsync([id],ct); if(employee==null) return Results.NotFound(new { message="직원을 찾을 수 없습니다." });
-        db.Employees.Remove(employee); await db.SaveChangesAsync(ct); return Results.NoContent();
+        db.Employees.Remove(employee); await TouchEmployeeData(db,ct); await db.SaveChangesAsync(ct); return Results.NoContent();
     }
 
     private static string? Validate(EmployeeRequest request)
@@ -67,6 +67,13 @@ public static class DashboardEndpoints
         x.EmployeeNumber=r.EmployeeNumber.Trim(); x.Workplace=T(r.Workplace); x.ParentDepartment=T(r.ParentDepartment); x.Department=T(r.Department);
         x.Name=T(r.Name); x.Position=T(r.Position); x.WorkShift=T(r.WorkShift); x.Duty=T(r.Duty); x.JobGroup=T(r.JobGroup);
         x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender); x.BirthDate=r.BirthDate; x.HireDate=r.HireDate; x.TerminationDate=r.TerminationDate; x.MonthlyWage=r.MonthlyWage;
+    }
+
+    private static async Task TouchEmployeeData(AppDbContext db,CancellationToken ct)
+    {
+        var state=await db.EmployeeDataStates.FindAsync([1],ct);
+        if(state==null) db.EmployeeDataStates.Add(new EmployeeDataState { Id=1,UpdatedDate=DateTime.Today });
+        else state.UpdatedDate=DateTime.Today;
     }
 
     private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
@@ -111,6 +118,7 @@ public static class DashboardEndpoints
             var missing=await db.Employees.Where(x=>!numbers.Contains(x.EmployeeNumber)).ToListAsync(ct);
             deleted=missing.Count; db.Employees.RemoveRange(missing);
         }
+        await TouchEmployeeData(db,ct);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
         return Results.Ok(new { added, updated, deleted, total = import.Rows.Count });
     }
@@ -125,12 +133,14 @@ public static class DashboardEndpoints
         if (!string.IsNullOrWhiteSpace(gender)) query=query.Where(x=>x.Gender==gender);
         if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))); }
         var rows=Sort(await query.ToListAsync(ct),sort,direction); var filteredCount=rows.Count;
-        var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages); var today=DateTime.Today;
+        var today=DateTime.Today;
+        var dataAsOf=(await db.EmployeeDataStates.AsNoTracking().FirstOrDefaultAsync(x=>x.Id==1,ct))?.UpdatedDate.Date??today.Date;
+        var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages);
         CountResponse[] Counts(Func<Employee,string?> pick)=>rows.Select(pick).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label).ToArray();
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department),ct), genders=await Values(db.Employees.Select(x=>x.Gender),ct) },
-            summary=new { totalCount,filteredCount,averageAge=AverageAge(rows,today),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
+            summary=new { totalCount,filteredCount,dataAsOf,averageAge=AverageAge(rows,today),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
             departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,today),
