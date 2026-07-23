@@ -79,23 +79,23 @@ public static class DashboardEndpoints
         if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 CSV 파일을 선택하세요." });
         if (file.Length > 10 * 1024 * 1024 || !string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
             return Results.BadRequest(new { message = "10MB 이하의 CSV 파일만 업로드할 수 있습니다." });
-        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream), db, ct); }
+        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream), db, ct, false); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 
     private static async Task<IResult> Paste(EmployeePasteRequest request, AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Text)) return Results.BadRequest(new { message = "붙여넣은 표가 비어 있습니다." });
-        try { return await Apply(csv.ParseClipboard(request.Text), db, ct); }
+        try { return await Apply(csv.ParseClipboard(request.Text), db, ct, request.DeleteMissing); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 
-    private static async Task<IResult> Apply(EmployeeImportResult import, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> Apply(EmployeeImportResult import, AppDbContext db, CancellationToken ct, bool deleteMissing)
     {
         var numbers = import.Rows.Select(x => x.EmployeeNumber).ToArray();
         var saved = await db.Employees.Where(x => numbers.Contains(x.EmployeeNumber)).ToListAsync(ct);
         var existing = saved.ToDictionary(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase);
-        var added = 0; var updated = 0;
+        var added = 0; var updated = 0; var deleted = 0;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         foreach (var row in import.Rows)
         {
@@ -105,8 +105,13 @@ public static class DashboardEndpoints
             x.Position=row.Position; x.WorkShift=row.WorkShift; x.Duty=row.Duty; x.JobGroup=row.JobGroup;
             x.EmploymentType=row.EmploymentType; x.Gender=row.Gender; x.BirthDate=row.BirthDate; x.HireDate=row.HireDate; x.TerminationDate=row.TerminationDate;
         }
+        if(deleteMissing)
+        {
+            var missing=await db.Employees.Where(x=>!numbers.Contains(x.EmployeeNumber)).ToListAsync(ct);
+            deleted=missing.Count; db.Employees.RemoveRange(missing);
+        }
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
-        return Results.Ok(new { added, updated, total = import.Rows.Count });
+        return Results.Ok(new { added, updated, deleted, total = import.Rows.Count });
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? gender, string? search,
@@ -172,6 +177,6 @@ public static class DashboardEndpoints
         return (direction=="desc"?rows.OrderByDescending(key):rows.OrderBy(key)).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
-    private sealed record EmployeePasteRequest(string Text);
+    private sealed record EmployeePasteRequest(string Text,bool DeleteMissing=false);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate);
 }
