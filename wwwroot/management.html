@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="./css/style.css?v=20260723-management1">
   <link rel="stylesheet" href="./css/management.css?v=20260723-management2">
   <link rel="stylesheet" href="./css/management-hr.css?v=20260723-management5">
+  <link rel="stylesheet" href="./css/management-controls.css?v=20260723-bars1">
 </head>
 <body><div class="shell">
   <aside class="sidebar">
@@ -16,8 +17,8 @@
     <div class="source-badge"><strong>데이터 소스</strong><br>금융감독원 OpenDART<br><span id="dartStatus">확인 중...</span></div>
   </aside>
   <main>
-    <header class="topbar"><div><h1>경영지표</h1><p class="subtitle">DART 재무성과와 현재 인력 기준 생산성을 함께 확인합니다.</p></div><button class="data-button data-button-primary sync-button" id="syncBtn">DART 새로고침</button></header>
-    <div class="management-toolbar"><div class="management-notice">인당 매출은 현재 재직 인원 기준이며, 인건비 지표는 <strong>DART 급여총액이 제공되는 기간에만</strong> 계산합니다.</div><div class="period-controls"><div class="period-toggle"><button class="active" type="button" data-mode="annual">연별</button><button type="button" data-mode="quarterly">분기별</button></div><select id="businessYearSelect" aria-label="사업연도"></select></div></div>
+    <header class="topbar"><div><h1>경영지표</h1></div><button class="data-button data-button-primary sync-button" id="syncBtn">DART 새로고침</button></header>
+    <div class="management-toolbar"><div class="period-controls"><div class="period-toggle"><button class="active" type="button" data-mode="annual">연별</button><button type="button" data-mode="quarterly">분기별</button></div><select id="businessYearSelect" aria-label="사업연도"></select><select id="reportPeriodSelect" aria-label="공시 기간" hidden></select></div></div>
     <section class="management-kpis" id="managementKpis">
       <article class="card management-kpi"><span>매출액</span><strong id="revenue">-</strong><small id="reportPeriod">최신 공시</small></article>
       <article class="card management-kpi"><span>영업이익</span><strong id="operatingIncome">-</strong><small>공시 기준</small></article>
@@ -41,4 +42,4 @@
     </article>
     <section class="card load-state" id="managementLoad"><h2>경영지표를 불러오는 중입니다</h2><p id="managementMessage">잠시만 기다려 주세요.</p></section>
   </main>
-</div><script src="./js/management.js?v=20260723-management5"></script></body></html>
+</div><div class="chart-tooltip" id="chartTooltip" hidden></div><script src="./js/management.js?v=20260723-bars1"></script></body></html>
