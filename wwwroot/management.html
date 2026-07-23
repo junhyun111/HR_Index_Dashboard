@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INNODEP 경영지표</title>
+  <link rel="stylesheet" href="./css/style.css?v=20260723-management1">
+  <link rel="stylesheet" href="./css/management.css?v=20260723-management1">
+</head>
+<body><div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><img src="images/innodep_logo_white.svg" alt="INNODEP"></div><div class="nav-title">WORKSPACE</div>
+    <a class="nav-item" href="./index.html"><span class="nav-icon">▦</span>HR 인덱스</a>
+    <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
+    <a class="nav-item active" href="./management.html"><span class="nav-icon">▤</span>경영지표</a>
+    <div class="source-badge"><strong>데이터 소스</strong><br>금융감독원 OpenDART<br><span id="dartStatus">확인 중...</span></div>
+  </aside>
+  <main>
+    <header class="topbar"><div><h1>경영지표</h1><p class="subtitle">DART 재무성과와 현재 인력 기준 생산성을 함께 확인합니다.</p></div><button class="data-button data-button-primary sync-button" id="syncBtn">DART 새로고침</button></header>
+    <div class="management-notice">인당·인건비 지표는 <strong>현재 재직 인원과 현재 월임금</strong>을 최신 공시 실적에 적용한 추정치입니다.</div>
+    <section class="management-kpis" id="managementKpis">
+      <article class="card management-kpi"><span>매출액</span><strong id="revenue">-</strong><small id="reportPeriod">최신 공시</small></article>
+      <article class="card management-kpi"><span>영업이익</span><strong id="operatingIncome">-</strong><small>공시 기준</small></article>
+      <article class="card management-kpi"><span>당기순이익</span><strong id="netIncome">-</strong><small>공시 기준</small></article>
+      <article class="card management-kpi"><span>영업이익률</span><strong id="operatingMargin">-</strong><small>영업이익 ÷ 매출액</small></article>
+      <article class="card management-kpi estimate"><span>인당 매출</span><strong id="revenuePerEmployee">-</strong><small>현재 인원 기준 추정</small></article>
+      <article class="card management-kpi estimate"><span>인당 영업이익</span><strong id="operatingPerEmployee">-</strong><small>현재 인원 기준 추정</small></article>
+      <article class="card management-kpi estimate"><span>인건비 비율</span><strong id="laborCostRatio">-</strong><small>현재 월임금 × 12 기준</small></article>
+      <article class="card management-kpi estimate"><span>인건비 투자수익률</span><strong id="laborRoi">-</strong><small>(영업이익 + 인건비) ÷ 인건비</small></article>
+    </section>
+    <section class="management-grid">
+      <article class="card management-chart-card"><div class="card-head"><h2 class="card-title">누적 매출·영업이익 추이</h2><span class="metric-unit">억원</span></div><div class="finance-bars" id="financeBars"></div></article>
+      <article class="card management-chart-card summary-card"><div class="card-head"><h2 class="card-title">재무·인력 요약</h2></div><dl class="management-summary">
+        <div><dt>현재 재직 인원</dt><dd id="headcount">-</dd></div><div><dt>월임금 입력 인원</dt><dd id="wageCount">-</dd></div>
+        <div><dt>월 급여 합계</dt><dd id="monthlyPayroll">-</dd></div><div><dt>부채비율</dt><dd id="debtRatio">-</dd></div>
+        <div><dt>재무제표 구분</dt><dd id="fsDiv">-</dd></div><div><dt>마지막 동기화</dt><dd id="syncedAt">-</dd></div>
+      </dl></article>
+    </section>
+    <article class="card report-card"><div class="table-head"><h2 class="card-title">DART 재무 공시 내역</h2><a id="dartLink" class="dart-link" href="https://dart.fss.or.kr/" target="_blank" rel="noopener">DART 원문 보기</a></div>
+      <div class="table-scroll"><table><thead><tr><th>기간</th><th>구분</th><th>매출액</th><th>영업이익</th><th>당기순이익</th><th>자산</th><th>부채</th><th>자본</th></tr></thead><tbody id="reportRows"></tbody></table></div>
+    </article>
+    <section class="card load-state" id="managementLoad"><h2>경영지표를 불러오는 중입니다</h2><p id="managementMessage">잠시만 기다려 주세요.</p></section>
+  </main>
+</div><script src="./js/management.js?v=20260723-management1"></script></body></html>

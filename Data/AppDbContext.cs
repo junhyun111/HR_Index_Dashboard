@@ -7,6 +7,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<EmployeeDataState> EmployeeDataStates => Set<EmployeeDataState>();
+    public DbSet<FinancialReport> FinancialReports => Set<FinancialReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +35,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             entity.ToTable("EmployeeDataState");
             entity.HasKey(x => x.Id);
+        });
+        modelBuilder.Entity<FinancialReport>(entity =>
+        {
+            entity.ToTable("FinancialReports");
+            entity.HasKey(x=>x.Id);
+            entity.Property(x=>x.ReportCode).HasMaxLength(10);
+            entity.Property(x=>x.ReportName).HasMaxLength(20);
+            entity.Property(x=>x.FsDiv).HasMaxLength(10);
+            entity.HasIndex(x=>new{x.BusinessYear,x.ReportCode}).IsUnique();
         });
     }
 }

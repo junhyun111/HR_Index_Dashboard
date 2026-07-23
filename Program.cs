@@ -9,6 +9,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using System.Threading.RateLimiting;
 
+var envPath=Path.Combine(Directory.GetCurrentDirectory(),".env");
+if(File.Exists(envPath))
+foreach(var line in File.ReadLines(envPath))
+{
+    var trimmed=line.Trim();if(trimmed.Length==0||trimmed.StartsWith('#'))continue;
+    var separator=trimmed.IndexOf('=');if(separator<=0)continue;
+    var name=trimmed[..separator].Trim();var value=trimmed[(separator+1)..].Trim().Trim('"','\'');
+    if(Environment.GetEnvironmentVariable(name)==null)Environment.SetEnvironmentVariable(name,value);
+}
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -80,6 +89,13 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddSingleton<EmployeeCsvService>();
+builder.Services.AddHttpClient<DartFinancialService>(client =>
+{
+    client.BaseAddress=new Uri("https://opendart.fss.or.kr/");
+    client.Timeout=TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("INNODEP-HR-Dashboard/1.0");
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json, application/xml, application/zip");
+});
 builder.Services.AddHttpClient<ExternalApiClient>((services, client) =>
 {
     var configuration = services.GetRequiredService<IConfiguration>();
@@ -112,6 +128,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.MapDashboardEndpoints();
+app.MapManagementEndpoints();
 app.MapAuthenticationEndpoints();
 
 var webRoot = app.Environment.WebRootPath;
@@ -125,9 +142,13 @@ app.MapGet("/index.html", () => Results.File(Path.Combine(webRoot, "index.html")
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/organization.html", () => Results.File(Path.Combine(webRoot, "organization.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
+app.MapGet("/management.html", () => Results.File(Path.Combine(webRoot, "management.html"), "text/html; charset=utf-8"))
+    .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/dashboard.js", () => Results.File(Path.Combine(webRoot, "js", "dashboard.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/organization.js", () => Results.File(Path.Combine(webRoot, "js", "organization.js"), "text/javascript; charset=utf-8"))
+    .RequireAuthorization("DashboardViewer");
+app.MapGet("/js/management.js", () => Results.File(Path.Combine(webRoot, "js", "management.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 
 await using (var scope = app.Services.CreateAsyncScope())
@@ -147,6 +168,24 @@ await using (var scope = app.Services.CreateAsyncScope())
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN MonthlyWage INTEGER NULL");
     await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS EmployeeDataState (Id INTEGER NOT NULL PRIMARY KEY, UpdatedDate TEXT NOT NULL)");
     await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO EmployeeDataState (Id, UpdatedDate) VALUES (1, date('now', 'localtime'))");
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS FinancialReports (
+          Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          BusinessYear INTEGER NOT NULL,
+          ReportCode TEXT NOT NULL,
+          ReportName TEXT NOT NULL,
+          FsDiv TEXT NOT NULL,
+          ReceiptNumber TEXT NULL,
+          Revenue INTEGER NULL,
+          OperatingIncome INTEGER NULL,
+          NetIncome INTEGER NULL,
+          Assets INTEGER NULL,
+          Liabilities INTEGER NULL,
+          Equity INTEGER NULL,
+          SyncedAtUtc TEXT NOT NULL
+        )
+        """);
+    await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_FinancialReports_BusinessYear_ReportCode ON FinancialReports (BusinessYear, ReportCode)");
 }
 
 app.Run();
