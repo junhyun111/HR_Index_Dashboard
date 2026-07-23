@@ -15,7 +15,57 @@ public static class DashboardEndpoints
         api.MapGet("/employees/export", Export).RequireAuthorization("Editor");
         api.MapPost("/employees/import", Import).DisableAntiforgery().RequireAuthorization("Editor");
         api.MapPost("/employees/paste", Paste).RequireAuthorization("Editor");
+        api.MapGet("/employees/search", SearchEmployees).RequireAuthorization("Editor");
+        api.MapPost("/employees", CreateEmployee).RequireAuthorization("Editor");
+        api.MapPut("/employees/{id:long}", UpdateEmployee).RequireAuthorization("Editor");
+        api.MapDelete("/employees/{id:long}", DeleteEmployee).RequireAuthorization("Editor");
         return endpoints;
+    }
+
+    private static async Task<IResult> SearchEmployees(string? q, AppDbContext db, CancellationToken ct)
+    {
+        var query=db.Employees.AsNoTracking();
+        if(!string.IsNullOrWhiteSpace(q)) { var term=q.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(term)||(x.Name!=null&&x.Name.Contains(term))); }
+        return Results.Ok(await query.OrderBy(x=>x.Name).ThenBy(x=>x.EmployeeNumber).Take(30).ToListAsync(ct));
+    }
+
+    private static async Task<IResult> CreateEmployee(EmployeeRequest request, AppDbContext db, CancellationToken ct)
+    {
+        var error=Validate(request); if(error!=null) return Results.BadRequest(new { message=error });
+        var number=request.EmployeeNumber.Trim();
+        if(await db.Employees.AnyAsync(x=>x.EmployeeNumber==number,ct)) return Results.Conflict(new { message="이미 등록된 사번입니다." });
+        var employee=new Employee { EmployeeNumber=number }; SetEmployee(employee,request); db.Employees.Add(employee); await db.SaveChangesAsync(ct);
+        return Results.Created($"/api/employees/{employee.Id}",employee);
+    }
+
+    private static async Task<IResult> UpdateEmployee(long id, EmployeeRequest request, AppDbContext db, CancellationToken ct)
+    {
+        var error=Validate(request); if(error!=null) return Results.BadRequest(new { message=error });
+        var employee=await db.Employees.FindAsync([id],ct); if(employee==null) return Results.NotFound(new { message="직원을 찾을 수 없습니다." });
+        var number=request.EmployeeNumber.Trim();
+        if(await db.Employees.AnyAsync(x=>x.Id!=id&&x.EmployeeNumber==number,ct)) return Results.Conflict(new { message="이미 등록된 사번입니다." });
+        SetEmployee(employee,request); await db.SaveChangesAsync(ct); return Results.Ok(employee);
+    }
+
+    private static async Task<IResult> DeleteEmployee(long id, AppDbContext db, CancellationToken ct)
+    {
+        var employee=await db.Employees.FindAsync([id],ct); if(employee==null) return Results.NotFound(new { message="직원을 찾을 수 없습니다." });
+        db.Employees.Remove(employee); await db.SaveChangesAsync(ct); return Results.NoContent();
+    }
+
+    private static string? Validate(EmployeeRequest request)
+    {
+        if(string.IsNullOrWhiteSpace(request.EmployeeNumber)) return "사번은 필수입니다.";
+        if(request.EmployeeNumber.Trim().Length>50) return "사번은 50자 이하여야 합니다.";
+        return null;
+    }
+
+    private static void SetEmployee(Employee x, EmployeeRequest r)
+    {
+        string? T(string? v)=>string.IsNullOrWhiteSpace(v)?null:v.Trim();
+        x.EmployeeNumber=r.EmployeeNumber.Trim(); x.Workplace=T(r.Workplace); x.ParentDepartment=T(r.ParentDepartment); x.Department=T(r.Department);
+        x.Name=T(r.Name); x.Position=T(r.Position); x.WorkShift=T(r.WorkShift); x.Duty=T(r.Duty); x.JobGroup=T(r.JobGroup);
+        x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender); x.BirthDate=r.BirthDate; x.HireDate=r.HireDate; x.TerminationDate=r.TerminationDate;
     }
 
     private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
@@ -123,4 +173,5 @@ public static class DashboardEndpoints
     }
     private sealed record CountResponse(string Label,int Value);
     private sealed record EmployeePasteRequest(string Text);
+    private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate);
 }
