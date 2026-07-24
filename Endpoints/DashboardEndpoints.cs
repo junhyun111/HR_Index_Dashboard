@@ -74,8 +74,10 @@ public static class DashboardEndpoints
     private static async Task TouchEmployeeData(AppDbContext db,CancellationToken ct)
     {
         var state=await db.EmployeeDataStates.FindAsync([1],ct);
-        if(state==null) db.EmployeeDataStates.Add(new EmployeeDataState { Id=1,UpdatedDate=DateTime.Now });
-        else state.UpdatedDate=DateTime.Now;
+        if(state==null)
+            db.EmployeeDataStates.Add(new EmployeeDataState { Id=1,UpdatedDate=DateTime.Today,LastModifiedAt=DateTimeOffset.UtcNow });
+        else
+            state.LastModifiedAt=DateTimeOffset.UtcNow;
     }
 
     private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, DailyEmployeeDatabaseService databases, CancellationToken ct)
@@ -141,7 +143,7 @@ public static class DashboardEndpoints
         var rows=Sort(await query.ToListAsync(ct),sort,direction); var filteredCount=rows.Count;
         var today=DateTime.Today;
         var dataAsOf=databases.SelectedDate;
-        var lastModifiedAt=databases.LastModifiedAt(dataAsOf);
+        var lastModifiedAt=await ReadLastModifiedAt(db,ct);
         var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages);
         CountResponse[] Counts(Func<Employee,string?> pick)=>rows.Select(pick).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label).ToArray();
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
@@ -157,6 +159,21 @@ public static class DashboardEndpoints
             monthlyTerminations=MonthlyDateCounts(rows.Select(x=>x.TerminationDate),today.Year,today),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
         });
+    }
+
+    private static async Task<DateTimeOffset?> ReadLastModifiedAt(AppDbContext db,CancellationToken ct)
+    {
+        var connection=db.Database.GetDbConnection();
+        if(connection.State!=System.Data.ConnectionState.Open) await connection.OpenAsync(ct);
+        await using var schema=connection.CreateCommand();
+        schema.CommandText="SELECT COUNT(*) FROM pragma_table_info('EmployeeDataState') WHERE name='LastModifiedAt'";
+        if(Convert.ToInt32(await schema.ExecuteScalarAsync(ct))==0)return null;
+        await using var command=connection.CreateCommand();
+        command.CommandText="SELECT LastModifiedAt FROM EmployeeDataState WHERE Id=1";
+        var value=await command.ExecuteScalarAsync(ct);
+        return value is string text&&DateTimeOffset.TryParse(text,System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.RoundtripKind,out var timestamp)
+            ?timestamp
+            :null;
     }
 
     private static IResult EmptyDashboard(DateTime dataAsOf,int page,int pageSize)

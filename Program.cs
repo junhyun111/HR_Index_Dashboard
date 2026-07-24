@@ -128,6 +128,14 @@ app.Use(async (context,next) =>
         var databases=context.RequestServices.GetRequiredService<DailyEmployeeDatabaseService>();
         var db=context.RequestServices.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync(context.RequestAborted);
+        var connection=db.Database.GetDbConnection();
+        if(connection.State!=System.Data.ConnectionState.Open) await connection.OpenAsync(context.RequestAborted);
+        await using(var schemaCommand=connection.CreateCommand())
+        {
+            schemaCommand.CommandText="SELECT COUNT(*) FROM pragma_table_info('EmployeeDataState') WHERE name='LastModifiedAt'";
+            if(Convert.ToInt32(await schemaCommand.ExecuteScalarAsync(context.RequestAborted))==0)
+                await db.Database.ExecuteSqlRawAsync("ALTER TABLE EmployeeDataState ADD COLUMN LastModifiedAt TEXT NULL",context.RequestAborted);
+        }
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT OR IGNORE INTO EmployeeDataState (Id, UpdatedDate) VALUES (1, {databases.SelectedDate:yyyy-MM-dd})",
             context.RequestAborted);
@@ -188,6 +196,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         if (!columns.Contains("MonthlyWage"))
             await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN MonthlyWage INTEGER NULL");
         await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS EmployeeDataState (Id INTEGER NOT NULL PRIMARY KEY, UpdatedDate TEXT NOT NULL)");
+        await using(var stateColumnsCommand=connection.CreateCommand())
+        {
+            stateColumnsCommand.CommandText="SELECT COUNT(*) FROM pragma_table_info('EmployeeDataState') WHERE name='LastModifiedAt'";
+            if(Convert.ToInt32(await stateColumnsCommand.ExecuteScalarAsync())==0)
+                await db.Database.ExecuteSqlRawAsync("ALTER TABLE EmployeeDataState ADD COLUMN LastModifiedAt TEXT NULL");
+        }
     }
 }
 
