@@ -51,7 +51,6 @@
 <dialog class="paste-dialog" id="pasteDialog"><form method="dialog" id="pasteForm"><div class="paste-dialog-head"><div><span class="dialog-kicker">BULK EDIT</span><h2>Excel 표 일괄 반영</h2></div><button class="dialog-close" id="closePasteBtn" type="button">×</button></div>
   <p class="paste-guide">아래 머리글을 포함해 Excel 표 전체를 복사한 뒤 붙여넣으세요. <strong>사번만 필수</strong>이며, 월임금은 원 단위 숫자로 입력합니다.</p>
   <textarea id="pasteArea" spellcheck="false" placeholder="사업장    상위부서    부서    사번    성명    직위    근무조    직책    직군    사원구분    성별    생년월일    입사일자    퇴사일자    월임금"></textarea><p class="paste-summary" id="pasteSummary">붙여넣은 데이터가 없습니다.</p>
-  <label class="sync-delete-option"><input id="deleteMissingEmployees" type="checkbox"><span><strong>전체 명단 동기화</strong><small>붙여넣은 명단에 없는 기존 직원을 DB에서 삭제합니다.</small></span></label>
   <div class="paste-dialog-actions"><button class="data-button" id="cancelPasteBtn" type="button">취소</button><button class="data-button data-button-primary" type="submit" id="applyPasteBtn" disabled>DB에 반영</button></div></form></dialog>
 <dialog class="detail-dialog" id="detailDialog"><div class="detail-dialog-head"><div><span class="dialog-kicker">HR DETAIL</span><h2 id="detailTitle"></h2><p id="detailDescription"></p></div><button class="dialog-close" id="closeDetailBtn" type="button" aria-label="닫기">×</button></div><div class="detail-chart" id="detailChart"></div></dialog>
-<script src="./js/dashboard.js?v=20260724-db-modified-at1"></script></body></html>
+<script src="./js/dashboard.js?v=20260724-replace-confirm1"></script></body></html>
