@@ -23,6 +23,19 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
     }
 
     public string ConnectionStringForSelectedDate()=>$"Data Source={PathFor(SelectedDate)}";
+    public bool SelectedDatabaseExists()=>File.Exists(PathFor(SelectedDate));
+
+    public DateTimeOffset? LastModifiedAt(DateTime date)
+    {
+        var path=PathFor(date);
+        var candidates=new[]{path,$"{path}-wal"}.Where(File.Exists).ToArray();
+        if(candidates.Length==0)return null;
+        var utc=candidates.Max(File.GetLastWriteTimeUtc);
+        TimeZoneInfo korea;
+        try { korea=TimeZoneInfo.FindSystemTimeZoneById("Korea Standard Time"); }
+        catch(TimeZoneNotFoundException) { korea=TimeZoneInfo.FindSystemTimeZoneById("Asia/Seoul"); }
+        return TimeZoneInfo.ConvertTime(new DateTimeOffset(utc,TimeSpan.Zero),korea);
+    }
 
     public object[] AvailableDates()
     {

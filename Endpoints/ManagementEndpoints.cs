@@ -21,11 +21,13 @@ public static class ManagementEndpoints
         catch(Exception e){return Results.BadRequest(new{message=$"DART 동기화 실패: {e.Message}"});}
     }
 
-    private static async Task<IResult> Dashboard(AppDbContext employeeDb,ManagementDbContext managementDb,CancellationToken ct)
+    private static async Task<IResult> Dashboard(AppDbContext employeeDb,ManagementDbContext managementDb,DailyEmployeeDatabaseService databases,CancellationToken ct)
     {
         var reports=await managementDb.FinancialReports.AsNoTracking().OrderBy(x=>x.BusinessYear).ThenBy(x=>x.ReportCode=="11013"?1:x.ReportCode=="11012"?2:x.ReportCode=="11014"?3:4).ToListAsync(ct);
         var latest=reports.LastOrDefault();var today=DateTime.Today;
-        var active=await employeeDb.Employees.AsNoTracking().Where(x=>x.TerminationDate==null||x.TerminationDate>=today).ToListAsync(ct);
+        var active=databases.SelectedDatabaseExists()
+            ?await employeeDb.Employees.AsNoTracking().Where(x=>x.TerminationDate==null||x.TerminationDate>=today).ToListAsync(ct)
+            :[];
         var headcount=active.Count;var monthlyPayroll=active.Where(x=>x.MonthlyWage!=null).Sum(x=>x.MonthlyWage??0);var wageCount=active.Count(x=>x.MonthlyWage!=null);
         double? Ratio(long? a,long? b)=>a!=null&&b is not null and not 0?Math.Round(a.Value/(double)b.Value*100,1):null;
         double? PerPerson(long? value)=>value!=null&&headcount>0?Math.Round(value.Value/(double)headcount):null;

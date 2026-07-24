@@ -23,8 +23,9 @@ public static class DashboardEndpoints
         return endpoints;
     }
 
-    private static async Task<IResult> SearchEmployees(string? q, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> SearchEmployees(string? q, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
+        if(!databases.SelectedDatabaseExists()) return Results.Ok(Array.Empty<Employee>());
         var query=db.Employees.AsNoTracking();
         if(!string.IsNullOrWhiteSpace(q)) { var term=q.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(term)||(x.Name!=null&&x.Name.Contains(term))); }
         return Results.Ok(await query.OrderBy(x=>x.Name).ThenBy(x=>x.EmployeeNumber).Take(30).ToListAsync(ct));
@@ -73,12 +74,14 @@ public static class DashboardEndpoints
     private static async Task TouchEmployeeData(AppDbContext db,CancellationToken ct)
     {
         var state=await db.EmployeeDataStates.FindAsync([1],ct);
-        if(state==null) db.EmployeeDataStates.Add(new EmployeeDataState { Id=1,UpdatedDate=DateTime.Today });
-        else state.UpdatedDate=DateTime.Today;
+        if(state==null) db.EmployeeDataStates.Add(new EmployeeDataState { Id=1,UpdatedDate=DateTime.Now });
+        else state.UpdatedDate=DateTime.Now;
     }
 
-    private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
+    private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
+        if(!databases.SelectedDatabaseExists())
+            return Results.File(csv.Export(Array.Empty<Employee>()), "text/csv; charset=utf-8", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.csv");
         var rows = await db.Employees.AsNoTracking().OrderBy(x => x.EmployeeNumber).ToListAsync(ct);
         return Results.File(csv.Export(rows), "text/csv; charset=utf-8", $"hr-employees-{DateTime.Now:yyyy-MM-dd}.csv");
     }
@@ -126,9 +129,10 @@ public static class DashboardEndpoints
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
-        string? sort, string? direction, int page, int pageSize, AppDbContext db, CancellationToken ct)
+        string? sort, string? direction, int page, int pageSize, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
         page=Math.Max(1,page); pageSize=Math.Clamp(pageSize==0?10:pageSize,1,100);
+        if(!databases.SelectedDatabaseExists()) return EmptyDashboard(databases.SelectedDate,page,pageSize);
         var totalCount=await db.Employees.CountAsync(ct); var query=db.Employees.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(workplace)) query=query.Where(x=>x.Workplace==workplace);
         if (!string.IsNullOrWhiteSpace(department)) query=query.Where(x=>x.Department==department||x.ParentDepartment==department);
@@ -136,13 +140,14 @@ public static class DashboardEndpoints
         if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))); }
         var rows=Sort(await query.ToListAsync(ct),sort,direction); var filteredCount=rows.Count;
         var today=DateTime.Today;
-        var dataAsOf=(await db.EmployeeDataStates.AsNoTracking().FirstOrDefaultAsync(x=>x.Id==1,ct))?.UpdatedDate.Date??today.Date;
+        var dataAsOf=databases.SelectedDate;
+        var lastModifiedAt=databases.LastModifiedAt(dataAsOf);
         var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages);
         CountResponse[] Counts(Func<Employee,string?> pick)=>rows.Select(pick).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label).ToArray();
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct) },
-            summary=new { totalCount,filteredCount,dataAsOf,averageAge=AverageAge(rows,today),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
+            summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,averageAge=AverageAge(rows,today),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
             departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,today),
@@ -151,6 +156,19 @@ public static class DashboardEndpoints
             monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),today.Year),
             monthlyTerminations=MonthlyDateCounts(rows.Select(x=>x.TerminationDate),today.Year,today),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
+        });
+    }
+
+    private static IResult EmptyDashboard(DateTime dataAsOf,int page,int pageSize)
+    {
+        var months=Enumerable.Range(1,12).Select(month=>new CountResponse($"{month}월",0)).ToArray();
+        return Results.Ok(new {
+            filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>() },
+            summary=new { totalCount=0,filteredCount=0,dataAsOf,lastModifiedAt=(DateTimeOffset?)null,averageAge=(double?)null,averageMonthlyWage=(long?)null,averageTenure=(double?)null,hiresThisYear=0,terminationsThisYear=0 },
+            departments=Array.Empty<CountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
+            tenureGroups=Array.Empty<CountResponse>(),monthlyWages=Array.Empty<CountResponse>(),ageGroups=Array.Empty<CountResponse>(),
+            monthlyHires=months,monthlyTerminations=months,employees=Array.Empty<Employee>(),
+            pagination=new {page,pageSize,pages=1,totalCount=0}
         });
     }
 

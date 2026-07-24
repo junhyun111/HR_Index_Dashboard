@@ -121,7 +121,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.Use(async (context,next) =>
 {
-    if(context.Request.Path.StartsWithSegments("/api/dashboard")||context.Request.Path.StartsWithSegments("/api/employees"))
+    var isEmployeeMutation=context.Request.Path.StartsWithSegments("/api/employees")
+        && context.Request.Method is "POST" or "PUT" or "DELETE";
+    if(isEmployeeMutation)
     {
         var databases=context.RequestServices.GetRequiredService<DailyEmployeeDatabaseService>();
         var db=context.RequestServices.GetRequiredService<AppDbContext>();
@@ -170,21 +172,23 @@ app.MapGet("/js/management.js", () => Results.File(Path.Combine(webRoot, "js", "
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
-    var connection = db.Database.GetDbConnection();
-    await connection.OpenAsync();
-    await using var columnsCommand = connection.CreateCommand();
-    columnsCommand.CommandText = "PRAGMA table_info('Employees')";
-    var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    await using (var reader = await columnsCommand.ExecuteReaderAsync())
-        while (await reader.ReadAsync()) columns.Add(reader.GetString(1));
-    if (!columns.Contains("BirthDate"))
-        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN BirthDate TEXT NULL");
-    if (!columns.Contains("MonthlyWage"))
-        await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN MonthlyWage INTEGER NULL");
-    await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS EmployeeDataState (Id INTEGER NOT NULL PRIMARY KEY, UpdatedDate TEXT NOT NULL)");
-    await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO EmployeeDataState (Id, UpdatedDate) VALUES (1, date('now', 'localtime'))");
+    var databases=scope.ServiceProvider.GetRequiredService<DailyEmployeeDatabaseService>();
+    if(databases.SelectedDatabaseExists())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var columnsCommand = connection.CreateCommand();
+        columnsCommand.CommandText = "PRAGMA table_info('Employees')";
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var reader = await columnsCommand.ExecuteReaderAsync())
+            while (await reader.ReadAsync()) columns.Add(reader.GetString(1));
+        if (!columns.Contains("BirthDate"))
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN BirthDate TEXT NULL");
+        if (!columns.Contains("MonthlyWage"))
+            await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN MonthlyWage INTEGER NULL");
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS EmployeeDataState (Id INTEGER NOT NULL PRIMARY KEY, UpdatedDate TEXT NOT NULL)");
+    }
 }
 
 await using (var scope = app.Services.CreateAsyncScope())
