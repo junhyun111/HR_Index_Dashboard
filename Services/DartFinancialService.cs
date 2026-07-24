@@ -12,11 +12,12 @@ public sealed class DartFinancialService(HttpClient client,IConfiguration config
     private static readonly (string Code,string Name)[] Reports=[("11013","1분기"),("11012","반기"),("11014","3분기"),("11011","연간")];
     public bool IsConfigured=>!string.IsNullOrWhiteSpace(configuration["DART_KEY"]);
 
-    public async Task<DartSyncResult> SyncAsync(AppDbContext db,CancellationToken ct)
+    public async Task<DartSyncResult> SyncAsync(ManagementDbContext db,CancellationToken ct)
     {
         var key=configuration["DART_KEY"]; if(string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("DART_KEY가 설정되지 않았습니다.");
         var saved=0; var skipped=0; var currentYear=DateTime.Today.Year;
-        for(var year=currentYear-5;year<=currentYear;year++)
+        var startYear=Math.Clamp(configuration.GetValue("Dart:StartYear",2015),2015,currentYear);
+        for(var year=startYear;year<=currentYear;year++)
         foreach(var report in Reports)
         {
             var data=await Fetch(key,CorpCode,year,report.Code,"CFS",ct)??await Fetch(key,CorpCode,year,report.Code,"OFS",ct);
@@ -26,9 +27,29 @@ public sealed class DartFinancialService(HttpClient client,IConfiguration config
             if(row==null){row=new FinancialReport{BusinessYear=year,ReportCode=report.Code,ReportName=report.Name,FsDiv=data.FsDiv};db.FinancialReports.Add(row);}
             row.ReportName=report.Name;row.FsDiv=data.FsDiv;row.ReceiptNumber=data.ReceiptNumber;row.Revenue=data.Revenue;row.OperatingIncome=data.OperatingIncome;
             row.NetIncome=data.NetIncome;row.Assets=data.Assets;row.Liabilities=data.Liabilities;row.Equity=data.Equity;
-            row.DartEmployeeCount=employees?.EmployeeCount;row.DartSalaryTotal=employees?.SalaryTotal;row.DartAverageSalary=employees?.AverageSalary;row.SyncedAtUtc=DateTime.UtcNow;saved++;
+            row.DartEmployeeCount=employees?.EmployeeCount;row.EmployeeCountIsEstimated=false;row.EmployeeCountBasis=employees==null?null:"DART 직원현황";
+            row.DartSalaryTotal=employees?.SalaryTotal;row.DartAverageSalary=employees?.AverageSalary;row.SyncedAtUtc=DateTime.UtcNow;saved++;
         }
-        await db.SaveChangesAsync(ct);return new(saved,skipped,DateTime.UtcNow);
+        await db.SaveChangesAsync(ct);
+        await FillMissingEmployeeCounts(db,ct);
+        return new(saved,skipped,DateTime.UtcNow);
+    }
+
+    private static async Task FillMissingEmployeeCounts(ManagementDbContext db,CancellationToken ct)
+    {
+        var rows=await db.FinancialReports.OrderBy(x=>x.BusinessYear)
+            .ThenBy(x=>x.ReportCode=="11013"?1:x.ReportCode=="11012"?2:x.ReportCode=="11014"?3:4).ToListAsync(ct);
+        int Period(FinancialReport x)=>x.BusinessYear*4+(x.ReportCode=="11013"?0:x.ReportCode=="11012"?1:x.ReportCode=="11014"?2:3);
+        var actual=rows.Where(x=>x.DartEmployeeCount>0&&!x.EmployeeCountIsEstimated).ToArray();
+        foreach(var row in rows.Where(x=>x.DartEmployeeCount==null||x.DartEmployeeCount<=0))
+        {
+            var nearest=actual.OrderBy(x=>Math.Abs(Period(x)-Period(row))).ThenBy(x=>Period(x)).Take(2).ToArray();
+            if(nearest.Length==0)continue;
+            row.DartEmployeeCount=(int)Math.Round(nearest.Average(x=>x.DartEmployeeCount!.Value),MidpointRounding.AwayFromZero);
+            row.EmployeeCountIsEstimated=true;
+            row.EmployeeCountBasis=string.Join(", ",nearest.Select(x=>$"{x.BusinessYear} {x.ReportName}"));
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task<FinancialData?> Fetch(string key,string corpCode,int year,string reportCode,string fsDiv,CancellationToken ct)

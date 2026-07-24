@@ -85,7 +85,7 @@ function renderChart(rows){
 }
 
 function renderHrCharts(rows){
-  const productivity=rows.map(x=>({...x,revenuePerEmployee:dashboard.headcount&&x.revenue!=null?x.revenue/dashboard.headcount/10000:null,averageSalary:x.dartAverageSalary==null?null:x.dartAverageSalary/10000}));
+  const productivity=rows.map(x=>({...x,revenuePerEmployee:x.dartEmployeeCount&&x.revenue!=null?x.revenue/x.dartEmployeeCount/10000:null,averageSalary:x.dartAverageSalary==null?null:x.dartAverageSalary/10000}));
   const efficiency=rows.map(x=>({...x,laborCostRatio:x.dartSalaryTotal?ratio(x.dartSalaryTotal,x.revenue):null,laborRoi:x.dartSalaryTotal&&x.operatingIncome!=null?(x.operatingIncome+x.dartSalaryTotal)/x.dartSalaryTotal*100:null}));
   metricChart('productivityChart',productivity,[{key:'revenuePerEmployee',name:'인당 매출',color:'#3978f6'},{key:'averageSalary',name:'평균 급여',color:'#8b6fd6'}],'만원');
   metricChart('laborEfficiencyChart',efficiency,[{key:'laborCostRatio',name:'인건비 비율',color:'#f0a43c'},{key:'laborRoi',name:'인건비 투자수익률',color:'#38a47b'}],'%');

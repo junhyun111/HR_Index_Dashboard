@@ -88,6 +88,9 @@ builder.Services.AddRateLimiter(options =>
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+var managementConnectionString = builder.Configuration.GetConnectionString("Management")
+    ?? throw new InvalidOperationException("경영지표 SQLite 연결 문자열이 없습니다.");
+builder.Services.AddDbContext<ManagementDbContext>(options => options.UseSqlite(managementConnectionString));
 builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
@@ -168,34 +171,50 @@ await using (var scope = app.Services.CreateAsyncScope())
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE Employees ADD COLUMN MonthlyWage INTEGER NULL");
     await db.Database.ExecuteSqlRawAsync("CREATE TABLE IF NOT EXISTS EmployeeDataState (Id INTEGER NOT NULL PRIMARY KEY, UpdatedDate TEXT NOT NULL)");
     await db.Database.ExecuteSqlRawAsync("INSERT OR IGNORE INTO EmployeeDataState (Id, UpdatedDate) VALUES (1, date('now', 'localtime'))");
-    await db.Database.ExecuteSqlRawAsync("""
-        CREATE TABLE IF NOT EXISTS FinancialReports (
-          Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-          BusinessYear INTEGER NOT NULL,
-          ReportCode TEXT NOT NULL,
-          ReportName TEXT NOT NULL,
-          FsDiv TEXT NOT NULL,
-          ReceiptNumber TEXT NULL,
-          Revenue INTEGER NULL,
-          OperatingIncome INTEGER NULL,
-          NetIncome INTEGER NULL,
-          Assets INTEGER NULL,
-          Liabilities INTEGER NULL,
-          Equity INTEGER NULL,
-          SyncedAtUtc TEXT NOT NULL
-        )
-        """);
-    await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS IX_FinancialReports_BusinessYear_ReportCode ON FinancialReports (BusinessYear, ReportCode)");
-    var financeColumns=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-    await using(var financeCommand=connection.CreateCommand())
+}
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var managementDb=scope.ServiceProvider.GetRequiredService<ManagementDbContext>();
+    await managementDb.Database.EnsureCreatedAsync();
+    var managementConnection=managementDb.Database.GetDbConnection();
+    await managementConnection.OpenAsync();
+    var managementColumns=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    await using(var schemaCommand=managementConnection.CreateCommand())
     {
-        financeCommand.CommandText="PRAGMA table_info('FinancialReports')";
-        await using var financeReader=await financeCommand.ExecuteReaderAsync();
-        while(await financeReader.ReadAsync())financeColumns.Add(financeReader.GetString(1));
+        schemaCommand.CommandText="PRAGMA table_info('FinancialReports')";
+        await using var schemaReader=await schemaCommand.ExecuteReaderAsync();
+        while(await schemaReader.ReadAsync())managementColumns.Add(schemaReader.GetString(1));
     }
-    if(!financeColumns.Contains("DartEmployeeCount"))await db.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN DartEmployeeCount INTEGER NULL");
-    if(!financeColumns.Contains("DartSalaryTotal"))await db.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN DartSalaryTotal INTEGER NULL");
-    if(!financeColumns.Contains("DartAverageSalary"))await db.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN DartAverageSalary INTEGER NULL");
+    if(!managementColumns.Contains("EmployeeCountIsEstimated"))
+        await managementDb.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN EmployeeCountIsEstimated INTEGER NOT NULL DEFAULT 0");
+    if(!managementColumns.Contains("EmployeeCountBasis"))
+        await managementDb.Database.ExecuteSqlRawAsync("ALTER TABLE FinancialReports ADD COLUMN EmployeeCountBasis TEXT NULL");
+
+    if(!await managementDb.FinancialReports.AnyAsync())
+    {
+        var sourcePath=Path.Combine(dataDirectory,"hr-dashboard.db");
+        if(File.Exists(sourcePath))
+        {
+            await using var migrate=managementConnection.CreateCommand();
+            migrate.CommandText="""
+                ATTACH DATABASE $source AS legacy;
+                INSERT OR IGNORE INTO FinancialReports
+                  (BusinessYear,ReportCode,ReportName,FsDiv,ReceiptNumber,Revenue,OperatingIncome,NetIncome,Assets,Liabilities,Equity,DartEmployeeCount,DartSalaryTotal,DartAverageSalary,SyncedAtUtc,EmployeeCountIsEstimated,EmployeeCountBasis)
+                SELECT BusinessYear,ReportCode,ReportName,FsDiv,ReceiptNumber,Revenue,OperatingIncome,NetIncome,Assets,Liabilities,Equity,DartEmployeeCount,DartSalaryTotal,DartAverageSalary,SyncedAtUtc,0,
+                       CASE WHEN DartEmployeeCount IS NOT NULL THEN '기존 DART 직원현황' ELSE NULL END
+                FROM legacy.FinancialReports;
+                DETACH DATABASE legacy;
+                """;
+            var parameter=migrate.CreateParameter();parameter.ParameterName="$source";parameter.Value=sourcePath;migrate.Parameters.Add(parameter);
+            try{await migrate.ExecuteNonQueryAsync();}catch(Microsoft.Data.Sqlite.SqliteException){ }
+        }
+    }
+    if(await managementDb.FinancialReports.AnyAsync())
+    {
+        var employeeDb=scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await employeeDb.Database.ExecuteSqlRawAsync("DROP TABLE IF EXISTS FinancialReports");
+    }
 }
 
 app.Run();
