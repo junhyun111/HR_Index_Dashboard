@@ -85,29 +85,14 @@ builder.Services.AddRateLimiter(options =>
         }));
 });
 
-var configuredConnectionString = builder.Configuration.GetConnectionString("Default")
-    ?? throw new InvalidOperationException("SQLite 연결 문자열이 없습니다.");
-var configuredBuilder=new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(configuredConnectionString);
-var configuredPath=Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath,configuredBuilder.DataSource));
-var today=DateTime.Today;
-var todayDatabasePath=Path.Combine(dataDirectory,EmployeeSnapshotService.FileName(today));
-if(!File.Exists(todayDatabasePath))
-{
-    var latestDaily=Directory.GetFiles(dataDirectory,"hr-dashboard-????-??-??-?.db")
-        .OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
-    var seed=latestDaily??(File.Exists(configuredPath)?configuredPath:null);
-    if(seed!=null)File.Copy(seed,todayDatabasePath);
-}
-var connectionString=new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(configuredConnectionString)
-{
-    DataSource=todayDatabasePath
-}.ToString();
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<DailyEmployeeDatabaseService>();
+builder.Services.AddDbContext<AppDbContext>((services,options)=>
+    options.UseSqlite(services.GetRequiredService<DailyEmployeeDatabaseService>().ConnectionStringForSelectedDate()));
 var managementConnectionString = builder.Configuration.GetConnectionString("Management")
     ?? throw new InvalidOperationException("경영지표 SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<ManagementDbContext>(options => options.UseSqlite(managementConnectionString));
 builder.Services.AddSingleton<EmployeeCsvService>();
-builder.Services.AddSingleton<EmployeeSnapshotService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
     client.BaseAddress=new Uri("https://opendart.fss.or.kr/");
@@ -134,6 +119,19 @@ app.UseStatusCodePages();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.Use(async (context,next) =>
+{
+    if(context.Request.Path.StartsWithSegments("/api/dashboard")||context.Request.Path.StartsWithSegments("/api/employees"))
+    {
+        var databases=context.RequestServices.GetRequiredService<DailyEmployeeDatabaseService>();
+        var db=context.RequestServices.GetRequiredService<AppDbContext>();
+        await db.Database.EnsureCreatedAsync(context.RequestAborted);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT OR IGNORE INTO EmployeeDataState (Id, UpdatedDate) VALUES (1, {databases.SelectedDate:yyyy-MM-dd})",
+            context.RequestAborted);
+    }
+    await next();
+});
 
 app.UseStaticFiles(new StaticFileOptions
 {

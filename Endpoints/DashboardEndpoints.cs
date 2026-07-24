@@ -12,22 +12,15 @@ public static class DashboardEndpoints
         var api = endpoints.MapGroup("/api");
         api.MapGet("/session", (HttpContext c) => Results.Ok(new { userName = c.User.Identity?.Name, canEdit = true, isAdministrator = true })).RequireAuthorization("DashboardViewer");
         api.MapGet("/dashboard", Dashboard).RequireAuthorization("DashboardViewer");
+        api.MapGet("/employee-dates", (DailyEmployeeDatabaseService databases) => Results.Ok(databases.AvailableDates())).RequireAuthorization("DashboardViewer");
         api.MapGet("/employees/export", Export).RequireAuthorization("Editor");
         api.MapPost("/employees/import", Import).DisableAntiforgery().RequireAuthorization("Editor");
         api.MapPost("/employees/paste", Paste).RequireAuthorization("Editor");
-        api.MapPost("/employees/snapshot", SaveSnapshot).RequireAuthorization("Editor");
         api.MapGet("/employees/search", SearchEmployees).RequireAuthorization("Editor");
         api.MapPost("/employees", CreateEmployee).RequireAuthorization("Editor");
         api.MapPut("/employees/{id:long}", UpdateEmployee).RequireAuthorization("Editor");
         api.MapDelete("/employees/{id:long}", DeleteEmployee).RequireAuthorization("Editor");
         return endpoints;
-    }
-
-    private static async Task<IResult> SaveSnapshot(EmployeeSnapshotRequest request,AppDbContext db,EmployeeSnapshotService snapshots,CancellationToken ct)
-    {
-        try{return Results.Ok(await snapshots.SaveAsync(request.Date.Date,db,ct));}
-        catch(ArgumentOutOfRangeException e){return Results.BadRequest(new{message=e.Message});}
-        catch(Microsoft.Data.Sqlite.SqliteException e){return Results.BadRequest(new{message=$"일별 DB 저장 실패: {e.Message}"});}
     }
 
     private static async Task<IResult> SearchEmployees(string? q, AppDbContext db, CancellationToken ct)
@@ -108,8 +101,9 @@ public static class DashboardEndpoints
 
     private static async Task<IResult> Apply(EmployeeImportResult import, AppDbContext db, CancellationToken ct, bool deleteMissing)
     {
-        var numbers = import.Rows.Select(x => x.EmployeeNumber).ToArray();
-        var saved = await db.Employees.Where(x => numbers.Contains(x.EmployeeNumber)).ToListAsync(ct);
+        var numbers = import.Rows.Select(x => x.EmployeeNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // 날짜별 DB를 한 번만 읽어 대량 IN 절과 SQLite 매개변수 제한을 피한다.
+        var saved = await db.Employees.ToListAsync(ct);
         var existing = saved.ToDictionary(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase);
         var added = 0; var updated = 0; var deleted = 0;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -123,8 +117,8 @@ public static class DashboardEndpoints
         }
         if(deleteMissing)
         {
-            var missing=await db.Employees.Where(x=>!numbers.Contains(x.EmployeeNumber)).ToListAsync(ct);
-            deleted=missing.Count; db.Employees.RemoveRange(missing);
+            var missing=saved.Where(x=>!numbers.Contains(x.EmployeeNumber)).ToArray();
+            deleted=missing.Length; db.Employees.RemoveRange(missing);
         }
         await TouchEmployeeData(db,ct);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
@@ -236,6 +230,5 @@ public static class DashboardEndpoints
     }
     private sealed record CountResponse(string Label,int Value);
     private sealed record EmployeePasteRequest(string Text,bool DeleteMissing=false);
-    private sealed record EmployeeSnapshotRequest(DateTime Date);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? MonthlyWage);
 }

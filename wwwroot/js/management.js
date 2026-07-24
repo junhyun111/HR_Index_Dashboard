@@ -38,6 +38,7 @@ function populatePeriods(){
 
 function render(){
   if(!dashboard?.reports?.length){renderEmpty();return;}
+  renderTable(dashboard.reports);
   const year=Number($('businessYearSelect').value);
   const periodReports=mode==='annual'
     ?dashboard.reports.filter(x=>x.reportCode==='11011')
@@ -46,7 +47,7 @@ function render(){
     ?periodReports.find(x=>x.businessYear===year)
     :periodReports.find(x=>x.reportCode===$('reportPeriodSelect').value)||periodReports[periodReports.length-1];
   if(!selected){renderEmpty();return;}
-  renderKpis(selected);renderSummary(selected);renderChart(periodReports);renderHrCharts(periodReports);renderTable(mode==='annual'?[selected]:periodReports);
+  renderKpis(selected);renderSummary(selected);renderChart(periodReports);renderHrCharts(periodReports);
 }
 
 function renderKpis(x){
