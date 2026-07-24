@@ -2,18 +2,18 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>INNODEP HR Index</title><link rel="stylesheet" href="./css/style.css?v=20260723-animation1">
+  <title>INNODEP HR Index</title><link rel="stylesheet" href="./css/style.css?v=20260724-kpi-detail1">
 </head>
 <body><div class="shell">
   <aside class="sidebar">
-    <div class="brand"><img src="images/innodep_logo_white.svg" alt="INNODEP"></div><div class="nav-title">WORKSPACE</div>
+    <a class="brand" href="./index.html" aria-label="HR Index Dashboard 홈"><img src="images/innodep_logo_white.svg" alt="INNODEP"></a><div class="nav-title">WORKSPACE</div>
     <a class="nav-item active" href="./index.html"><span class="nav-icon">▦</span>HR 인덱스</a>
     <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
     <a class="nav-item" href="./management.html"><span class="nav-icon">▤</span>경영지표</a>
     <div class="source-badge"><strong>데이터 소스</strong><br>서버 로컬 SQLite<br><span id="sourceStatus">불러오는 중...</span></div>
   </aside>
   <main>
-    <header class="topbar"><div><h1>HR Index Dashboard</h1></div><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
+    <header class="topbar"><div><h1><a class="home-title" href="./index.html">HR Index Dashboard</a></h1></div><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
     <section class="filters card" id="filterArea" hidden>
       <select id="workplaceFilter"><option value="">전체 사업장</option></select><select id="deptFilter"><option value="">전체 부서</option></select>
       <select id="genderFilter"><option value="">전체 성별</option></select><input class="search" id="searchInput" type="search" placeholder="사번, 성명, 부서, 직책 검색"><button class="reset" id="resetBtn">초기화</button>
@@ -21,11 +21,11 @@
     <section id="dashboard" hidden>
       <div class="kpis">
         <article class="card kpi"><div class="kpi-label">조회 인원</div><div class="kpi-value" id="totalPeople">-</div><div class="kpi-note" id="peopleNote">전체 대비</div></article>
-        <article class="card kpi"><div class="kpi-label">평균 연령</div><div class="kpi-value"><span id="averageAge">-</span><span class="kpi-unit">세</span></div><div class="kpi-note">생년월일 입력 인원 기준</div></article>
-        <article class="card kpi"><div class="kpi-label">평균 월임금</div><div class="kpi-value"><span id="averageMonthlyWage">-</span><span class="kpi-unit">만원</span></div><div class="kpi-note">월임금 입력 인원 기준</div></article>
-        <article class="card kpi"><div class="kpi-label">평균 근속연수</div><div class="kpi-value"><span id="averageTenure">-</span><span class="kpi-unit">년</span></div><div class="kpi-note">입사일자 입력 인원 기준</div></article>
-        <article class="card kpi"><div class="kpi-label">올해 입사 인원</div><div class="kpi-value" id="hiresThisYear">-</div><div class="kpi-note">입사일자 기준</div></article>
-        <article class="card kpi"><div class="kpi-label">올해 퇴사 예정인원</div><div class="kpi-value" id="terminationsThisYear">-</div><div class="kpi-note">오늘 이후 퇴사일자 기준</div></article>
+        <article class="card kpi kpi-clickable" data-detail="age" tabindex="0" role="button"><div class="kpi-label">평균 연령</div><div class="kpi-value"><span id="averageAge">-</span><span class="kpi-unit">세</span></div><div class="kpi-note">생년월일 입력 인원 기준 · 상세보기</div></article>
+        <article class="card kpi kpi-clickable" data-detail="wage" tabindex="0" role="button"><div class="kpi-label">평균 월임금</div><div class="kpi-value"><span id="averageMonthlyWage">-</span><span class="kpi-unit">만원</span></div><div class="kpi-note">월임금 입력 인원 기준 · 상세보기</div></article>
+        <article class="card kpi kpi-clickable" data-detail="tenure" tabindex="0" role="button"><div class="kpi-label">평균 근속연수</div><div class="kpi-value"><span id="averageTenure">-</span><span class="kpi-unit">년</span></div><div class="kpi-note">입사일자 입력 인원 기준 · 상세보기</div></article>
+        <article class="card kpi kpi-clickable" data-detail="hires" tabindex="0" role="button"><div class="kpi-label">올해 입사 인원</div><div class="kpi-value" id="hiresThisYear">-</div><div class="kpi-note">입사일자 기준 · 월별 상세보기</div></article>
+        <article class="card kpi kpi-clickable" data-detail="terminations" tabindex="0" role="button"><div class="kpi-label">올해 퇴사 예정인원</div><div class="kpi-value" id="terminationsThisYear">-</div><div class="kpi-note">오늘 이후 퇴사일자 기준 · 상세보기</div></article>
       </div>
       <div class="grid">
         <article class="card chart-card chart-department"><div class="card-head"><h2 class="card-title">부서별 인원</h2><span class="card-caption">HEADCOUNT</span></div><div class="bar-chart" id="deptChart"></div></article>
@@ -51,4 +51,5 @@
   <textarea id="pasteArea" spellcheck="false" placeholder="사업장    상위부서    부서    사번    성명    직위    근무조    직책    직군    사원구분    성별    생년월일    입사일자    퇴사일자    월임금"></textarea><p class="paste-summary" id="pasteSummary">붙여넣은 데이터가 없습니다.</p>
   <label class="sync-delete-option"><input id="deleteMissingEmployees" type="checkbox"><span><strong>전체 명단 동기화</strong><small>붙여넣은 명단에 없는 기존 직원을 DB에서 삭제합니다.</small></span></label>
   <div class="paste-dialog-actions"><button class="data-button" id="cancelPasteBtn" type="button">취소</button><button class="data-button data-button-primary" type="submit" id="applyPasteBtn" disabled>DB에 반영</button></div></form></dialog>
-<script src="./js/dashboard.js?v=20260723-asof1"></script></body></html>
+<dialog class="detail-dialog" id="detailDialog"><div class="detail-dialog-head"><div><span class="dialog-kicker">HR DETAIL</span><h2 id="detailTitle"></h2><p id="detailDescription"></p></div><button class="dialog-close" id="closeDetailBtn" type="button" aria-label="닫기">×</button></div><div class="detail-chart" id="detailChart"></div></dialog>
+<script src="./js/dashboard.js?v=20260724-kpi-detail1"></script></body></html>

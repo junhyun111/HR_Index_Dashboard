@@ -145,6 +145,9 @@ public static class DashboardEndpoints
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,today),
             monthlyWages=MonthlyWageGroups(rows),
+            ageGroups=AgeGroups(rows,today),
+            monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),today.Year),
+            monthlyTerminations=MonthlyDateCounts(rows.Select(x=>x.TerminationDate),today.Year,today),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
         });
     }
@@ -160,6 +163,27 @@ public static class DashboardEndpoints
     {
         var ages=rows.Where(x=>x.BirthDate!=null).Select(x=>{var birth=x.BirthDate!.Value.Date;return today.Year-birth.Year-(birth.Date>today.AddYears(-(today.Year-birth.Year))?1:0);}).ToArray();
         return ages.Length==0?null:Math.Round(ages.Average(),1);
+    }
+
+    private static CountResponse[] AgeGroups(IEnumerable<Employee> rows,DateTime today)
+    {
+        var counts=new int[6];
+        foreach(var birth in rows.Where(x=>x.BirthDate!=null).Select(x=>x.BirthDate!.Value.Date))
+        {
+            var age=today.Year-birth.Year-(birth>today.AddYears(-(today.Year-birth.Year))?1:0);
+            if(age<0) continue;
+            counts[age<20?0:age<30?1:age<40?2:age<50?3:age<60?4:5]++;
+        }
+        var labels=new[]{"20세 미만","20대","30대","40대","50대","60세 이상"};
+        return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
+    }
+
+    private static CountResponse[] MonthlyDateCounts(IEnumerable<DateTime?> dates,int year,DateTime? from=null)
+    {
+        var counts=new int[12];
+        foreach(var date in dates.Where(x=>x!=null).Select(x=>x!.Value.Date))
+            if(date.Year==year&&(from==null||date>=from.Value.Date)) counts[date.Month-1]++;
+        return Enumerable.Range(1,12).Select(month=>new CountResponse($"{month}월",counts[month-1])).ToArray();
     }
 
     private static double? AverageTenure(IEnumerable<Employee> rows,DateTime today)
