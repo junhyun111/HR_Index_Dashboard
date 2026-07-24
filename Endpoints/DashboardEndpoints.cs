@@ -15,11 +15,19 @@ public static class DashboardEndpoints
         api.MapGet("/employees/export", Export).RequireAuthorization("Editor");
         api.MapPost("/employees/import", Import).DisableAntiforgery().RequireAuthorization("Editor");
         api.MapPost("/employees/paste", Paste).RequireAuthorization("Editor");
+        api.MapPost("/employees/snapshot", SaveSnapshot).RequireAuthorization("Editor");
         api.MapGet("/employees/search", SearchEmployees).RequireAuthorization("Editor");
         api.MapPost("/employees", CreateEmployee).RequireAuthorization("Editor");
         api.MapPut("/employees/{id:long}", UpdateEmployee).RequireAuthorization("Editor");
         api.MapDelete("/employees/{id:long}", DeleteEmployee).RequireAuthorization("Editor");
         return endpoints;
+    }
+
+    private static async Task<IResult> SaveSnapshot(EmployeeSnapshotRequest request,AppDbContext db,EmployeeSnapshotService snapshots,CancellationToken ct)
+    {
+        try{return Results.Ok(await snapshots.SaveAsync(request.Date.Date,db,ct));}
+        catch(ArgumentOutOfRangeException e){return Results.BadRequest(new{message=e.Message});}
+        catch(Microsoft.Data.Sqlite.SqliteException e){return Results.BadRequest(new{message=$"일별 DB 저장 실패: {e.Message}"});}
     }
 
     private static async Task<IResult> SearchEmployees(string? q, AppDbContext db, CancellationToken ct)
@@ -228,5 +236,6 @@ public static class DashboardEndpoints
     }
     private sealed record CountResponse(string Label,int Value);
     private sealed record EmployeePasteRequest(string Text,bool DeleteMissing=false);
+    private sealed record EmployeeSnapshotRequest(DateTime Date);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? MonthlyWage);
 }

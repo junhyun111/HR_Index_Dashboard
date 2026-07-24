@@ -85,13 +85,29 @@ builder.Services.AddRateLimiter(options =>
         }));
 });
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
+var configuredConnectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("SQLite 연결 문자열이 없습니다.");
+var configuredBuilder=new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(configuredConnectionString);
+var configuredPath=Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath,configuredBuilder.DataSource));
+var today=DateTime.Today;
+var todayDatabasePath=Path.Combine(dataDirectory,EmployeeSnapshotService.FileName(today));
+if(!File.Exists(todayDatabasePath))
+{
+    var latestDaily=Directory.GetFiles(dataDirectory,"hr-dashboard-????-??-??-?.db")
+        .OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
+    var seed=latestDaily??(File.Exists(configuredPath)?configuredPath:null);
+    if(seed!=null)File.Copy(seed,todayDatabasePath);
+}
+var connectionString=new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(configuredConnectionString)
+{
+    DataSource=todayDatabasePath
+}.ToString();
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 var managementConnectionString = builder.Configuration.GetConnectionString("Management")
     ?? throw new InvalidOperationException("경영지표 SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<ManagementDbContext>(options => options.UseSqlite(managementConnectionString));
 builder.Services.AddSingleton<EmployeeCsvService>();
+builder.Services.AddSingleton<EmployeeSnapshotService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
     client.BaseAddress=new Uri("https://opendart.fss.or.kr/");
