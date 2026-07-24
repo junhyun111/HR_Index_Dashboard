@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>INNODEP 경영지표</title>
-  <link rel="stylesheet" href="./css/style.css?v=20260723-animation1">
-  <link rel="stylesheet" href="./css/management.css?v=20260723-management2">
-  <link rel="stylesheet" href="./css/management-hr.css?v=20260723-management5">
+  <script>(()=>{const k='hr-dashboard-theme',m=matchMedia('(prefers-color-scheme: dark)'),a=t=>{document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const b=document.getElementById('themeToggle');if(b){const d=t==='dark';b.textContent=d?'☀':'☾';b.title=d?'라이트 모드로 전환':'다크 모드로 전환';b.setAttribute('aria-label',b.title)}};a(localStorage.getItem(k)||(m.matches?'dark':'light'));addEventListener('DOMContentLoaded',()=>{const b=document.createElement('button');b.id='themeToggle';b.className='theme-toggle';b.type='button';b.onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(k,t);a(t)};const h=document.querySelector('.topbar');if(h){const r=h.lastElementChild,g=document.createElement('div');g.className='topbar-actions';r.replaceWith(g);g.append(b,r)}else{b.classList.add('theme-toggle-floating');document.body.append(b)}a(document.documentElement.dataset.theme)})})()</script>
+  <link rel="stylesheet" href="./css/style.css?v=20260724-dark2">
+  <link rel="stylesheet" href="./css/management.css?v=20260724-report-table1">
+  <link rel="stylesheet" href="./css/management-hr.css?v=20260724-dark2">
   <link rel="stylesheet" href="./css/management-controls.css?v=20260723-bars1">
   <link rel="stylesheet" href="./css/management-animation.css?v=20260723-animation1">
 </head>
@@ -18,7 +19,7 @@
     <div class="source-badge"><strong>데이터 소스</strong><br>금융감독원 OpenDART<br><span id="dartStatus">확인 중...</span></div>
   </aside>
   <main>
-    <header class="topbar"><div><h1>경영지표</h1></div><button class="data-button data-button-primary sync-button" id="syncBtn">DART 새로고침</button></header>
+    <header class="topbar"><div><h1>경영지표</h1></div><button class="theme-toggle theme-toggle-static" type="button" aria-label="다크모드 전환" onclick="const d=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem('hr-dashboard-theme',d);document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d"><span class="theme-sun">☀</span><span class="theme-moon">☾</span></button><button class="data-button data-button-primary sync-button" id="syncBtn">DART 새로고침</button></header>
     <div class="management-toolbar"><div class="period-controls"><div class="period-toggle"><button class="active" type="button" data-mode="annual">연별</button><button type="button" data-mode="quarterly">분기별</button></div><select id="businessYearSelect" aria-label="사업연도"></select><select id="reportPeriodSelect" aria-label="공시 기간" hidden></select></div></div>
     <section class="management-kpis" id="managementKpis">
       <article class="card management-kpi"><span>매출액</span><strong id="revenue">-</strong><small id="reportPeriod">최신 공시</small></article>
@@ -39,8 +40,8 @@
       </dl></article>
     </section>
     <article class="card report-card"><div class="table-head"><h2 class="card-title">DART 재무 공시 내역</h2><a id="dartLink" class="dart-link" href="https://dart.fss.or.kr/" target="_blank" rel="noopener">DART 원문 보기</a></div>
-      <div class="table-scroll"><table><thead><tr><th>기간</th><th>구분</th><th>매출액</th><th>영업이익</th><th>당기순이익</th><th>자산</th><th>부채</th><th>자본</th></tr></thead><tbody id="reportRows"></tbody></table></div>
+      <div class="table-scroll"><table><thead><tr><th>기간</th><th>매출액</th><th>영업이익</th><th>당기순이익</th><th>자산</th><th>부채</th><th>자본</th></tr></thead><tbody id="reportRows"></tbody></table></div>
     </article>
     <section class="card load-state" id="managementLoad"><h2>경영지표를 불러오는 중입니다</h2><p id="managementMessage">잠시만 기다려 주세요.</p></section>
   </main>
-</div><div class="chart-tooltip" id="chartTooltip" hidden></div><script src="./js/management.js?v=20260723-animation1"></script></body></html>
+</div><div class="chart-tooltip" id="chartTooltip" hidden></div><script src="./js/management.js?v=20260724-report-table1"></script></body></html>

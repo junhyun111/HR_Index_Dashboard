@@ -167,8 +167,8 @@ function bindChartTooltip(id,rows,series,viewWidth,left,right){
   svg.onpointerleave=()=>{tooltip.hidden=true;if(hoverLine)hoverLine.setAttribute('visibility','hidden');};
 }
 
-function renderTable(rows){$('reportRows').innerHTML=[...rows].reverse().map(r=>`<tr><td>${r.businessYear} ${r.reportName}</td><td>${r.fsDiv==='CFS'?'연결':'별도'}</td><td>${money(r.revenue)}</td><td>${money(r.operatingIncome)}</td><td>${money(r.netIncome)}</td><td>${money(r.assets)}</td><td>${money(r.liabilities)}</td><td>${money(r.equity)}</td></tr>`).join('');}
-function renderEmpty(){$('financeChart').innerHTML='<div class="finance-empty">DART 새로고침을 눌러 데이터를 가져오세요.</div>';$('reportRows').innerHTML='<tr><td class="table-empty" colspan="8">저장된 재무 데이터가 없습니다.</td></tr>';}
+function renderTable(rows){$('reportRows').innerHTML=[...rows].reverse().map(r=>`<tr><td>${r.businessYear} ${r.reportName}</td><td>${money(r.revenue)}</td><td>${money(r.operatingIncome)}</td><td>${money(r.netIncome)}</td><td>${money(r.assets)}</td><td>${money(r.liabilities)}</td><td>${money(r.equity)}</td></tr>`).join('');}
+function renderEmpty(){$('financeChart').innerHTML='<div class="finance-empty">DART 새로고침을 눌러 데이터를 가져오세요.</div>';$('reportRows').innerHTML='<tr><td class="table-empty" colspan="7">저장된 재무 데이터가 없습니다.</td></tr>';}
 function ratio(a,b){return a!=null&&b? a/b*100:null;}
 function label(r){return mode==='annual'?String(r.businessYear):r.reportName;}
 function formatAxis(v){return Math.abs(v)>=1000?`${number.format(Math.round(v/100)/10)}천`:number.format(Math.round(v));}
@@ -178,3 +178,21 @@ $('businessYearSelect').onchange=()=>{populatePeriods();render();};
 $('reportPeriodSelect').onchange=render;
 $('syncBtn').onclick=async()=>{if(!confirm('DART에서 이노뎁 최신 재무 데이터를 가져올까요?'))return;$('syncBtn').disabled=true;$('syncBtn').textContent='동기화 중...';try{const r=await fetch('/api/management/sync',{method:'POST'}),x=await r.json();if(!r.ok)throw Error(x.message||'동기화 실패');await load();}catch(e){alert(e.message);}finally{$('syncBtn').disabled=false;$('syncBtn').textContent='DART 새로고침';}};
 load();
+function ensureManagementThemeToggle(){
+  const topbar=document.querySelector('.topbar');
+  if(!topbar||topbar.querySelector('.theme-toggle-static'))return;
+  const button=document.createElement('button');
+  button.className='theme-toggle theme-toggle-static management-theme-toggle';
+  button.type='button';
+  button.setAttribute('aria-label','다크모드 전환');
+  button.innerHTML='<span class="theme-sun">☀</span><span class="theme-moon">☾</span>';
+  button.onclick=()=>{
+    const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
+    localStorage.setItem('hr-dashboard-theme',theme);
+    document.documentElement.dataset.theme=theme;
+    document.documentElement.style.colorScheme=theme;
+  };
+  const actions=topbar.querySelector('.topbar-actions');
+  topbar.insertBefore(button,actions||topbar.lastElementChild);
+}
+ensureManagementThemeToggle();

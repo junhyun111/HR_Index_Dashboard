@@ -4,6 +4,8 @@
   --line: #e7edf4;
   --paper: #ffffff;
   --canvas: #f4f7fb;
+  --field: #fbfcfe;
+  --soft: #f8fafc;
   --blue: #3978f6;
   --cyan: #35b7ca;
   --green: #38a47b;
@@ -20,6 +22,14 @@ body {
 }
 
 button, input, select { font: inherit; }
+.topbar-actions { display: flex; align-items: center; gap: 9px; }
+.theme-toggle { flex: 0 0 auto; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--paper); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 5px 16px rgba(24,59,104,.06); }
+.theme-toggle:hover { border-color: #9bb9e8; }
+.theme-toggle-static { margin-left: auto; }
+.topbar-actions #themeToggle { display: none; }
+.theme-sun { display: none; }
+html[data-theme="dark"] .theme-sun { display: inline; }
+html[data-theme="dark"] .theme-moon { display: none; }
 .shell { min-height: 100vh; display: grid; grid-template-columns: 224px 1fr; }
 .sidebar {
   position: sticky; top: 0; height: 100vh; padding: 30px 22px;
@@ -236,3 +246,61 @@ tbody tr:hover { background: #f7faff; }
   .filters select:first-child, .filters .search { grid-column: auto; }
   .employee-form-grid { grid-template-columns: 1fr; }
 }
+
+html[data-theme="dark"] {
+  --ink: #e6edf7; --muted: #9cacbf; --line: #2b3b50; --paper: #172435;
+  --canvas: #0d1724; --field: #111e2d; --soft: #142131;
+  --shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+html[data-theme="dark"] .sidebar { background: linear-gradient(170deg,#0b2038,#071523 70%); }
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .session-box,
+html[data-theme="dark"] .theme-toggle,
+html[data-theme="dark"] .edit-menu,
+html[data-theme="dark"] .employee-dialog,
+html[data-theme="dark"] .paste-dialog,
+html[data-theme="dark"] .detail-dialog { color: var(--ink); background: var(--paper); }
+html[data-theme="dark"] select,
+html[data-theme="dark"] .search,
+html[data-theme="dark"] .employee-form-grid input,
+html[data-theme="dark"] .employee-search,
+html[data-theme="dark"] #pasteArea { color: var(--ink); border-color: #34475f; background: var(--field); }
+html[data-theme="dark"] .reset,
+html[data-theme="dark"] .session-box button,
+html[data-theme="dark"] .dialog-close { color: #bdc9d8; background: #29394c; }
+html[data-theme="dark"] .data-button:not(.data-button-primary) { color: #c3cfdd; border-color: #3a4c63; background: #1b2a3d; }
+html[data-theme="dark"] th { color: #9daec1; background: var(--soft); }
+html[data-theme="dark"] td { color: #becbda; border-color: #27384c; }
+html[data-theme="dark"] tbody tr:hover { background: #1b2b3e; }
+html[data-theme="dark"] .bar-track { background: #26384d; }
+html[data-theme="dark"] .donut::after { background: var(--paper); }
+html[data-theme="dark"] .edit-menu button { color: #bdc9d8; }
+html[data-theme="dark"] .edit-menu button:hover { color: #7ba7ff; background: #20344d; }
+html[data-theme="dark"] .employee-result { color: #b6c4d4; background: var(--paper); border-color: #293a4e; }
+html[data-theme="dark"] .employee-result:hover { background: #1d2e43; }
+html[data-theme="dark"] .sync-delete-option { color: #e0b4bb; border-color: #65414a; background: #2b2029; }
+html[data-theme="dark"] .page-btn { color: var(--ink); border-color: var(--line); background: var(--paper); }
+html[data-theme="dark"] .page-btn.active { color: white; border-color: var(--blue); background: var(--blue); }
+html[data-theme="dark"] .updated { color:#c0ccda; border-color:var(--line); background:var(--paper); }
+html[data-theme="dark"] .subtitle,
+html[data-theme="dark"] .kpi-label,
+html[data-theme="dark"] .kpi-note,
+html[data-theme="dark"] .kpi-unit,
+html[data-theme="dark"] .card-caption,
+html[data-theme="dark"] .bar-label,
+html[data-theme="dark"] .bar-number,
+html[data-theme="dark"] .wage-value,
+html[data-theme="dark"] .wage-label,
+html[data-theme="dark"] .legend,
+html[data-theme="dark"] .hist-value,
+html[data-theme="dark"] .hist-label,
+html[data-theme="dark"] .data-as-of,
+html[data-theme="dark"] .chart-empty,
+html[data-theme="dark"] .table-empty { color:#aebdce; }
+html[data-theme="dark"] .employee-form-grid label,
+html[data-theme="dark"] .paste-guide { color:#c2cedc; }
+html[data-theme="dark"] .wage-histogram,
+html[data-theme="dark"] .histogram,
+html[data-theme="dark"] .table-head,
+html[data-theme="dark"] .pagination,
+html[data-theme="dark"] .detail-dialog-head { border-color:var(--line); }

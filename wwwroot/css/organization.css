@@ -62,3 +62,31 @@
   .org-board { padding: 18px; }
   .org-guide { align-items: flex-start; flex-direction: column; gap: 5px; }
 }
+
+html[data-theme="dark"] .button-light { color:#c3cfdd; border-color:var(--line); background:var(--paper); }
+html[data-theme="dark"] .button-secondary { color:#9fc0ff; border-color:#38547a; background:#1b3150; }
+html[data-theme="dark"] .button-danger { color:#f0aab3; border-color:#68404a; background:#2d2029; }
+html[data-theme="dark"] .org-board,
+html[data-theme="dark"] .org-node { color:var(--ink); background:var(--paper); border-color:#33465d; }
+html[data-theme="dark"] .org-node-group { background:#182a42; }
+html[data-theme="dark"] .org-node-executive { background:#29243c; }
+html[data-theme="dark"] .org-node-office,
+html[data-theme="dark"] .org-node-council { background:#172c35; }
+html[data-theme="dark"] .org-node-taskforce { background:#332b1d; }
+html[data-theme="dark"] .org-node-team { background:#182536; }
+html[data-theme="dark"] .org-node-ceo { color:white; background:linear-gradient(135deg,#173b68,#285b91); }
+html[data-theme="dark"] .org-lane,
+html[data-theme="dark"] .org-group-lane { border-color:#304258; background:#111e2d; }
+html[data-theme="dark"] .org-lane h3 { color:#9bacc0; background:var(--paper); }
+html[data-theme="dark"] .org-dialog { color:var(--ink); background:var(--paper); }
+html[data-theme="dark"] .org-dialog input,
+html[data-theme="dark"] .org-dialog select { color:var(--ink); border-color:#34475f; background:var(--field); }
+html[data-theme="dark"] #orgStatus,
+html[data-theme="dark"] .org-guide,
+html[data-theme="dark"] .org-type,
+html[data-theme="dark"] .org-edit-hint { color:#aebdce; }
+html[data-theme="dark"] #orgStatus.is-dirty { color:#f0ad59; }
+html[data-theme="dark"] .org-dialog label { color:#c2cedc; }
+html[data-theme="dark"] .org-dialog select:disabled { color:#93a4b7; background:#243347; }
+html[data-theme="dark"] .org-children,
+html[data-theme="dark"] .org-top-level { border-color:#40546c; }

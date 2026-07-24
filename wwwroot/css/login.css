@@ -13,3 +13,10 @@ input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(57,120,246,.1)
 .login-error { min-height:20px; margin:2px 0 9px; color:#d44848; font-size:12px; }
 button { width:100%; height:46px; border:0; border-radius:9px; color:white; background:var(--blue); font:inherit; font-weight:800; cursor:pointer; }
 button:disabled { opacity:.6; cursor:wait; }
+.theme-toggle { position:fixed; top:20px; right:20px; width:42px; height:42px; border:1px solid var(--line); border-radius:10px; color:var(--ink); background:rgba(255,255,255,.9); font-size:21px; line-height:1; box-shadow:0 8px 24px rgba(30,64,108,.12); }
+html[data-theme="dark"] { --ink:#e6edf7; --muted:#9cacbf; --line:#34475f; color-scheme:dark; }
+html[data-theme="dark"] body { background:linear-gradient(145deg,#091522,#101d2c 55%,#0b1928); }
+html[data-theme="dark"] .login-card { border-color:#2d4056; background:rgba(23,36,53,.96); box-shadow:0 24px 70px rgba(0,0,0,.3); }
+html[data-theme="dark"] label { color:#b5c3d3; }
+html[data-theme="dark"] input { color:var(--ink); border-color:var(--line); background:#111e2d; }
+html[data-theme="dark"] .theme-toggle { color:var(--ink); background:#172435; }
