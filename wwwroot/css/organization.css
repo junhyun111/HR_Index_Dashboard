@@ -27,10 +27,32 @@
 .org-node-team { min-height: 38px; }
 .org-children { position: relative; display: grid; gap: 6px; margin-top: 8px; padding-left: 13px; border-left: 1px solid #dce5ef; }
 .org-children::before { content: ""; position: absolute; top: 0; left: -1px; width: 13px; border-top: 1px solid #dce5ef; }
-.org-top-level { width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(160px, 180px); align-items: start; gap: 14px; margin-top: 26px; padding: 20px 0 0; border-top: 1px solid #cfdbe8; border-left: 0; }
+.org-top-level { width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: max-content; align-items: start; gap: 14px; margin-top: 26px; padding: 20px 0 0; border-top: 1px solid #cfdbe8; border-left: 0; }
 .org-top-level::before { top: -26px; left: 50%; width: 1px; height: 26px; border-top: 0; border-left: 1px solid #cfdbe8; }
-.org-top-level > .org-branch { padding-top: 13px; }
+.org-top-level > .org-branch { display:flex; flex-direction:column; align-items:center; min-width:160px; padding-top:13px; }
 .org-top-level > .org-branch::before { content: ""; position: absolute; top: 0; left: 50%; height: 13px; border-left: 1px solid #cfdbe8; }
+.org-top-level > .org-branch > .org-node { width:160px; }
+.org-horizontal-level { width:max-content; display:flex; align-items:flex-start; justify-content:center; gap:12px; margin-top:22px; padding:17px 0 0; border-top:1px solid #cfdbe8; border-left:0; }
+.org-horizontal-level::before { top:-22px; left:50%; width:1px; height:22px; border-top:0; border-left:1px solid #cfdbe8; }
+.org-horizontal-level > .org-branch { display:flex; flex-direction:column; align-items:center; min-width:142px; padding-top:13px; }
+.org-horizontal-level > .org-branch::before { content:""; position:absolute; top:0; left:50%; height:13px; border-left:1px solid #cfdbe8; }
+.org-horizontal-level > .org-branch > .org-node { width:142px; }
+.org-horizontal-level[data-parent-type="executive"] { gap:26px; margin-top:28px; padding-top:20px; border-color:#bdcde0; }
+.org-horizontal-level[data-parent-type="executive"]::before { top:-28px; height:28px; border-color:#bdcde0; }
+.org-horizontal-level[data-parent-type="executive"] > .org-branch { padding-top:16px; }
+.org-horizontal-level[data-parent-type="executive"] > .org-branch::before { height:16px; border-color:#bdcde0; }
+.org-horizontal-level[data-parent-type="executive"] > .org-branch > .org-node { width:166px; min-height:48px; border-color:#b9cdf0; background:#f4f8ff; }
+.org-horizontal-level[data-parent-type="group"] { gap:14px; }
+.org-horizontal-level[data-parent-type="division"],
+.org-horizontal-level[data-parent-type="center"] { gap:8px; margin-top:18px; padding-top:14px; }
+.org-horizontal-level[data-parent-type="division"]::before,
+.org-horizontal-level[data-parent-type="center"]::before { top:-18px; height:18px; }
+.org-horizontal-level[data-parent-type="division"] > .org-branch,
+.org-horizontal-level[data-parent-type="center"] > .org-branch { min-width:118px; padding-top:11px; }
+.org-horizontal-level[data-parent-type="division"] > .org-branch::before,
+.org-horizontal-level[data-parent-type="center"] > .org-branch::before { height:11px; }
+.org-horizontal-level[data-parent-type="division"] > .org-branch > .org-node,
+.org-horizontal-level[data-parent-type="center"] > .org-branch > .org-node { width:118px; }
 
 .org-dialog { width: min(470px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 16px; color: var(--ink); box-shadow: 0 24px 70px rgba(12,35,66,.28); }
 .org-dialog::backdrop { background: rgba(12, 28, 49, .5); backdrop-filter: blur(2px); }
@@ -71,3 +93,7 @@ html[data-theme="dark"] .org-dialog label { color:#c2cedc; }
 html[data-theme="dark"] .org-dialog select:disabled { color:#93a4b7; background:#243347; }
 html[data-theme="dark"] .org-children,
 html[data-theme="dark"] .org-top-level { border-color:#40546c; }
+html[data-theme="dark"] .org-horizontal-level { border-color:#40546c; }
+html[data-theme="dark"] .org-horizontal-level::before,
+html[data-theme="dark"] .org-horizontal-level > .org-branch::before { border-color:#40546c; }
+html[data-theme="dark"] .org-horizontal-level[data-parent-type="executive"] > .org-branch > .org-node { border-color:#3c5d89; background:#1a2f4a; }

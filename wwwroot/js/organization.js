@@ -96,6 +96,12 @@ function renderOrganization() {
   const chart = $('orgChart');
   chart.replaceChildren();
   if (root) chart.append(createOrgBranch(root, true));
+  const board = chart.closest('.org-board');
+  if (board) {
+    requestAnimationFrame(() => {
+      board.scrollLeft = Math.max(0, (board.scrollWidth - board.clientWidth) / 2);
+    });
+  }
 }
 
 function createOrgBranch(item, isRoot = false) {
@@ -117,7 +123,9 @@ function createOrgBranch(item, isRoot = false) {
   const children = organization.filter(candidate => candidate.parentId === item.id);
   if (children.length) {
     const childArea = document.createElement('div');
-    childArea.className = `org-children${isRoot ? ' org-top-level' : ''}`;
+    const horizontalLevel = isRoot || ['executive','group','division','center'].includes(item.type);
+    childArea.className = `org-children${isRoot ? ' org-top-level' : horizontalLevel ? ' org-horizontal-level' : ''}`;
+    childArea.dataset.parentType = item.type;
     children.forEach(child => childArea.append(createOrgBranch(child)));
     branch.append(childArea);
   }
