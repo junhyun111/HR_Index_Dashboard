@@ -95,9 +95,9 @@ public static class DashboardEndpoints
     private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
         if(!databases.SelectedDatabaseExists())
-            return Results.File(csv.Export(Array.Empty<Employee>()), "text/csv; charset=utf-8", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.csv");
-        var rows = await db.Employees.AsNoTracking().OrderBy(x => x.EmployeeNumber).ToListAsync(ct);
-        return Results.File(csv.Export(rows), "text/csv; charset=utf-8", $"hr-employees-{DateTime.Now:yyyy-MM-dd}.csv");
+            return Results.File(csv.ExportExcel(Array.Empty<Employee>()), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
+        var rows = await db.Employees.AsNoTracking().ToListAsync(ct);
+        return Results.File(csv.ExportExcel(rows), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
     }
 
     private static async Task<IResult> Import(IFormFile? file, AppDbContext db, EmployeeCsvService csv, CancellationToken ct)

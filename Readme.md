@@ -30,7 +30,7 @@ dotnet run
 - `POST /api/auth/logout`: 로그아웃
 - `GET /api/session`: 로그인 사용자 조회
 - `GET /api/dashboard`: 필터, 집계, 직원 페이지 조회
-- `GET /api/employees/export`: 직원 데이터를 UTF-8 `.csv`로 내려받기
+- `GET /api/employees/export`: 직원 데이터를 Excel `.xlsx`로 내려받기
 - `POST /api/employees/import`: 수정된 `.csv`를 검증한 뒤 직원 추가/수정
 - `POST /api/employees/paste`: Excel에서 복사한 탭 구분 표를 검증한 뒤 직원 추가/수정
 - `GET /api/integrations/status`: 설정된 외부 API 연결 확인
