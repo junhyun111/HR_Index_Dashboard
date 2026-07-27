@@ -13,32 +13,24 @@
 .button:hover { filter: brightness(.97); }
 .org-guide { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 4px; color: #8190a2; font-size: 11px; }
 .status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--green); }
-.org-board { min-height: 600px; padding: 28px; overflow: auto; }
-.org-chart { min-width: 980px; }
+.org-board { min-height: 600px; padding: 20px; overflow: auto; }
+.org-chart { min-width: max-content; }
 .org-root-branch { display: flex; flex-direction: column; align-items: center; }
-.org-node { position: relative; width: 100%; min-height: 53px; display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 2px 8px; padding: 10px 12px; border: 1px solid #dce5ef; border-radius: 10px; color: var(--ink); background: white; text-align: left; box-shadow: 0 4px 12px rgba(31, 65, 106, .06); cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s; }
+.org-branch { position: relative; }
+.org-node { position: relative; width: 100%; min-height: 42px; display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 2px 6px; padding: 7px 9px; border: 1px solid #dce5ef; border-radius: 8px; color: var(--ink); background: white; text-align: left; box-shadow: 0 3px 9px rgba(31, 65, 106, .05); cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s; }
 .org-node:hover { z-index: 2; border-color: #86aef5; box-shadow: 0 8px 18px rgba(31, 82, 153, .12); transform: translateY(-1px); }
-.org-node strong { overflow-wrap: anywhere; font-size: 12px; }
-.org-type { grid-column: 1 / -1; color: #8a9bad; font-size: 8px; font-weight: 800; letter-spacing: .08em; }
-.org-edit-hint { align-self: center; color: #a3afbd; font-size: 9px; opacity: 0; }
+.org-node strong { overflow-wrap: anywhere; font-size: 10px; }
+.org-edit-hint { align-self: center; color: #a3afbd; font-size: 8px; opacity: 0; }
 .org-node:hover .org-edit-hint { opacity: 1; }
-.org-node-ceo { width: 210px; min-height: 68px; color: white; border-color: #173b68; background: linear-gradient(135deg, #173b68, #285b91); text-align: center; }
-.org-node-ceo .org-type { color: #9ebde1; }
+.org-node-ceo { width: 170px; min-height: 50px; text-align: center; }
 .org-node-ceo .org-edit-hint { display: none; }
-.org-node-group { border-top: 4px solid var(--blue); background: #f9fbff; }
-.org-node-executive { border-top: 4px solid #7957d5; background: #fbfaff; }
-.org-node-office, .org-node-council { border-top: 4px solid var(--cyan); background: #f8fdfe; }
-.org-node-taskforce { border-color: #f1c67d; background: #fffaf1; }
-.org-node-team { min-height: 43px; background: #fbfcfe; box-shadow: none; }
-.org-children { position: relative; display: grid; gap: 8px; margin-top: 10px; padding-left: 16px; border-left: 1px solid #dce5ef; }
-.org-children::before { content: ""; position: absolute; top: 0; left: -1px; width: 16px; border-top: 1px solid #dce5ef; }
-.org-top-level { width: 100%; display: grid; gap: 24px; margin-top: 32px; padding: 25px 0 0; border-top: 1px solid #cfdbe8; border-left: 0; }
-.org-top-level::before { top: -32px; left: 50%; width: 1px; height: 32px; border-top: 0; border-left: 1px solid #cfdbe8; }
-.org-lane { position: relative; padding: 17px 14px 14px; border: 1px solid #e1e8f0; border-radius: 13px; background: #f8fafc; }
-.org-lane h3 { position: absolute; top: -8px; left: 14px; margin: 0; padding: 0 7px; color: #7d8da0; background: white; font-size: 9px; letter-spacing: .05em; }
-.org-lane-nodes { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); align-items: start; gap: 14px; }
-.org-group-lane { background: #f6f9fe; }
-.org-group-lane .org-lane-nodes { grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 18px; }
+.org-node-team { min-height: 38px; }
+.org-children { position: relative; display: grid; gap: 6px; margin-top: 8px; padding-left: 13px; border-left: 1px solid #dce5ef; }
+.org-children::before { content: ""; position: absolute; top: 0; left: -1px; width: 13px; border-top: 1px solid #dce5ef; }
+.org-top-level { width: max-content; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(160px, 180px); align-items: start; gap: 14px; margin-top: 26px; padding: 20px 0 0; border-top: 1px solid #cfdbe8; border-left: 0; }
+.org-top-level::before { top: -26px; left: 50%; width: 1px; height: 26px; border-top: 0; border-left: 1px solid #cfdbe8; }
+.org-top-level > .org-branch { padding-top: 13px; }
+.org-top-level > .org-branch::before { content: ""; position: absolute; top: 0; left: 50%; height: 13px; border-left: 1px solid #cfdbe8; }
 
 .org-dialog { width: min(470px, calc(100% - 28px)); padding: 0; border: 0; border-radius: 16px; color: var(--ink); box-shadow: 0 24px 70px rgba(12,35,66,.28); }
 .org-dialog::backdrop { background: rgba(12, 28, 49, .5); backdrop-filter: blur(2px); }
@@ -68,22 +60,11 @@ html[data-theme="dark"] .button-secondary { color:#9fc0ff; border-color:#38547a;
 html[data-theme="dark"] .button-danger { color:#f0aab3; border-color:#68404a; background:#2d2029; }
 html[data-theme="dark"] .org-board,
 html[data-theme="dark"] .org-node { color:var(--ink); background:var(--paper); border-color:#33465d; }
-html[data-theme="dark"] .org-node-group { background:#182a42; }
-html[data-theme="dark"] .org-node-executive { background:#29243c; }
-html[data-theme="dark"] .org-node-office,
-html[data-theme="dark"] .org-node-council { background:#172c35; }
-html[data-theme="dark"] .org-node-taskforce { background:#332b1d; }
-html[data-theme="dark"] .org-node-team { background:#182536; }
-html[data-theme="dark"] .org-node-ceo { color:white; background:linear-gradient(135deg,#173b68,#285b91); }
-html[data-theme="dark"] .org-lane,
-html[data-theme="dark"] .org-group-lane { border-color:#304258; background:#111e2d; }
-html[data-theme="dark"] .org-lane h3 { color:#9bacc0; background:var(--paper); }
 html[data-theme="dark"] .org-dialog { color:var(--ink); background:var(--paper); }
 html[data-theme="dark"] .org-dialog input,
 html[data-theme="dark"] .org-dialog select { color:var(--ink); border-color:#34475f; background:var(--field); }
 html[data-theme="dark"] #orgStatus,
 html[data-theme="dark"] .org-guide,
-html[data-theme="dark"] .org-type,
 html[data-theme="dark"] .org-edit-hint { color:#aebdce; }
 html[data-theme="dark"] #orgStatus.is-dirty { color:#f0ad59; }
 html[data-theme="dark"] .org-dialog label { color:#c2cedc; }

@@ -4,7 +4,7 @@ const DEFAULT_ORGANIZATION = [
   { id:'vision-council', name:'비전정책협의회', type:'council', parentId:'ceo' },
   { id:'audit-office', name:'제도감사실', type:'office', parentId:'ceo' },
   { id:'cao', name:'CAO', type:'executive', parentId:'ceo' },
-  { id:'cfo', name:'CFO 그룹', type:'group', parentId:'ceo' },
+  { id:'cfo', name:'CFO 그룹', type:'group', parentId:'cao' },
   { id:'cfo-finance', name:'재무혁식부분', type:'division', parentId:'cfo' },
   { id:'finance-accounting', name:'재무회계팀', type:'team', parentId:'cfo-finance' },
   { id:'business-planning', name:'경영기획팀', type:'team', parentId:'cfo-finance' },
@@ -14,7 +14,7 @@ const DEFAULT_ORGANIZATION = [
   { id:'anyang-center', name:'안양센터', type:'center', parentId:'cfo' },
   { id:'manufacturing', name:'제조팀', type:'team', parentId:'anyang-center' },
   { id:'sc', name:'SC팀', type:'team', parentId:'anyang-center' },
-  { id:'coo', name:'COO 그룹', type:'group', parentId:'ceo' },
+  { id:'coo', name:'COO 그룹', type:'group', parentId:'cao' },
   { id:'sales-1-div', name:'영업1부문', type:'division', parentId:'coo' },
   { id:'sales-1', name:'영업 1팀', type:'team', parentId:'sales-1-div' },
   { id:'sales-2-div', name:'영업2부문', type:'division', parentId:'coo' },
@@ -29,7 +29,7 @@ const DEFAULT_ORGANIZATION = [
   { id:'sales-admin', name:'영업관리팀', type:'team', parentId:'sales-planning-div' },
   { id:'smart-div', name:'스마트사업부문', type:'division', parentId:'coo' },
   { id:'smart-business', name:'스마트사업팀', type:'team', parentId:'smart-div' },
-  { id:'cto', name:'CTO 그룹', type:'group', parentId:'ceo' },
+  { id:'cto', name:'CTO 그룹', type:'group', parentId:'cao' },
   { id:'vurix-div', name:'VURIX부문', type:'division', parentId:'cto' },
   { id:'server', name:'서버팀', type:'team', parentId:'vurix-div' },
   { id:'client', name:'클라이언트팀', type:'team', parentId:'vurix-div' },
@@ -60,7 +60,12 @@ function cloneOrganization(data) {
 function loadOrganization() {
   try {
     const saved = JSON.parse(localStorage.getItem(ORG_STORAGE_KEY));
-    return validateOrganization(saved) ? saved : cloneOrganization(DEFAULT_ORGANIZATION);
+    const loaded = validateOrganization(saved) ? saved : cloneOrganization(DEFAULT_ORGANIZATION);
+    ['cfo','coo','cto'].forEach(id => {
+      const item = loaded.find(candidate => candidate.id === id);
+      if (item && loaded.some(candidate => candidate.id === 'cao')) item.parentId = 'cao';
+    });
+    return loaded;
   } catch (_) {
     return cloneOrganization(DEFAULT_ORGANIZATION);
   }
@@ -100,15 +105,12 @@ function createOrgBranch(item, isRoot = false) {
   card.type = 'button';
   card.className = `org-node org-node-${item.type}`;
 
-  const type = document.createElement('span');
-  type.className = 'org-type';
-  type.textContent = ORG_TYPE_LABELS[item.type];
   const name = document.createElement('strong');
   name.textContent = item.name;
   const edit = document.createElement('span');
   edit.className = 'org-edit-hint';
   edit.textContent = '수정';
-  card.append(type, name, edit);
+  card.append(name, edit);
   card.addEventListener('click', () => openOrgDialog(item.id));
   branch.append(card);
 
@@ -116,25 +118,7 @@ function createOrgBranch(item, isRoot = false) {
   if (children.length) {
     const childArea = document.createElement('div');
     childArea.className = `org-children${isRoot ? ' org-top-level' : ''}`;
-    if (isRoot) {
-      const lanes = [
-        { label:'CEO 직속 조직', items:children.filter(child => child.type !== 'group') },
-        { label:'사업 그룹', items:children.filter(child => child.type === 'group') }
-      ];
-      lanes.filter(lane => lane.items.length).forEach(lane => {
-        const section = document.createElement('section');
-        section.className = `org-lane${lane.label === '사업 그룹' ? ' org-group-lane' : ''}`;
-        const label = document.createElement('h3');
-        label.textContent = lane.label;
-        const nodes = document.createElement('div');
-        nodes.className = 'org-lane-nodes';
-        lane.items.forEach(child => nodes.append(createOrgBranch(child)));
-        section.append(label, nodes);
-        childArea.append(section);
-      });
-    } else {
-      children.forEach(child => childArea.append(createOrgBranch(child)));
-    }
+    children.forEach(child => childArea.append(createOrgBranch(child)));
     branch.append(childArea);
   }
   return branch;
@@ -155,7 +139,6 @@ function openOrgDialog(id = null) {
   const item = id ? organization.find(candidate => candidate.id === id) : null;
   $('orgDialogTitle').textContent = item ? '조직 정보 수정' : '새 조직 추가';
   $('orgName').value = item?.name || '';
-  $('orgType').value = item?.type || 'team';
   $('orgFormError').textContent = '';
   $('orgDeleteBtn').hidden = !item || item.parentId === null;
 
@@ -196,13 +179,12 @@ $('orgForm').addEventListener('submit', event => {
   if (editingOrgId) {
     const item = organization.find(candidate => candidate.id === editingOrgId);
     item.name = name;
-    item.type = $('orgType').value;
     if (item.parentId !== null) item.parentId = $('orgParent').value;
   } else {
     organization.push({
       id: `org-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
-      type: $('orgType').value,
+      type: 'team',
       parentId: $('orgParent').value
     });
   }
