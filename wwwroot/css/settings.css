@@ -1,0 +1,25 @@
+.settings-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:14px; padding:24px; }
+.settings-kicker { color:var(--blue); font-size:10px; font-weight:800; letter-spacing:.14em; }
+.settings-intro h2 { margin:5px 0 8px; font-size:20px; }
+.settings-intro p { max-width:720px; margin:0; color:var(--muted); font-size:12px; line-height:1.7; }
+.settings-actions { display:flex; flex-shrink:0; gap:8px; }
+.settings-table-card { padding:0; overflow:hidden; }
+.settings-table-head { display:flex; align-items:center; justify-content:space-between; min-height:74px; padding:18px 22px; border-bottom:1px solid var(--line); }
+.settings-table-head h2 { margin:0 0 4px; font-size:15px; }
+.settings-table-head p { margin:0; color:var(--muted); font-size:11px; }
+#settingsStatus { color:var(--muted); font-size:11px; }
+#settingsStatus.is-error { color:#dd5366; }
+#settingsStatus.is-success { color:#26966e; }
+.settings-table { width:100%; border-collapse:collapse; }
+.settings-table th { padding:11px 18px; color:var(--muted); background:var(--soft); font-size:10px; font-weight:700; text-align:left; }
+.settings-table td { padding:11px 18px; border-top:1px solid var(--line); font-size:12px; }
+.settings-table tbody tr:first-child td { border-top:0; }
+.settings-order { width:54px; color:var(--muted); }
+.internal-key { display:inline-flex; padding:5px 8px; border-radius:6px; color:#3978f6; background:rgba(57,120,246,.09); font:11px Consolas,monospace; }
+.default-name { color:var(--muted); }
+.column-name-input { width:min(320px,100%); height:34px; padding:0 10px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:var(--field,#fff); outline:none; font-size:12px; }
+.column-name-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(57,120,246,.1); }
+.column-name-input.is-invalid { border-color:#dd5366; }
+.settings-loading { height:180px; color:var(--muted); text-align:center; }
+html[data-theme="dark"] .internal-key { color:#7ea8ff; background:rgba(75,136,255,.13); }
+@media(max-width:760px){.settings-intro{align-items:stretch;flex-direction:column}.settings-actions{justify-content:flex-end}.settings-table th,.settings-table td{padding:10px 12px}.settings-table th:nth-child(2),.settings-table td:nth-child(2){display:none}}

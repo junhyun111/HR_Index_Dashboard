@@ -92,27 +92,28 @@ public static class DashboardEndpoints
             state.LastModifiedAt=DateTimeOffset.UtcNow;
     }
 
-    private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, DailyEmployeeDatabaseService databases, CancellationToken ct)
+    private static async Task<IResult> Export(AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
+        var displayNames=await columnSettings.DisplayNamesByDefaultAsync(ct);
         if(!databases.SelectedDatabaseExists())
-            return Results.File(csv.ExportExcel(Array.Empty<Employee>()), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
+            return Results.File(csv.ExportExcel(Array.Empty<Employee>(),displayNames), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
         var rows = await db.Employees.AsNoTracking().ToListAsync(ct);
-        return Results.File(csv.ExportExcel(rows), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
+        return Results.File(csv.ExportExcel(rows,displayNames), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
     }
 
-    private static async Task<IResult> Import(IFormFile? file, AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
+    private static async Task<IResult> Import(IFormFile? file, AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, CancellationToken ct)
     {
         if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 CSV 파일을 선택하세요." });
         if (file.Length > 10 * 1024 * 1024 || !string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
             return Results.BadRequest(new { message = "10MB 이하의 CSV 파일만 업로드할 수 있습니다." });
-        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream), db, ct); }
+        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream,await columnSettings.HeaderAliasesAsync(ct)), db, ct); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 
-    private static async Task<IResult> Paste(EmployeePasteRequest request, AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
+    private static async Task<IResult> Paste(EmployeePasteRequest request, AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Text)) return Results.BadRequest(new { message = "붙여넣은 표가 비어 있습니다." });
-        try { return await Apply(csv.ParseClipboard(request.Text), db, ct); }
+        try { return await Apply(csv.ParseClipboard(request.Text,await columnSettings.HeaderAliasesAsync(ct)), db, ct); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 

@@ -92,6 +92,10 @@ builder.Services.AddDbContext<AppDbContext>((services,options)=>
 var managementConnectionString = builder.Configuration.GetConnectionString("Management")
     ?? throw new InvalidOperationException("경영지표 SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<ManagementDbContext>(options => options.UseSqlite(managementConnectionString));
+var commonSettingsConnectionString = builder.Configuration.GetConnectionString("CommonSettings")
+    ?? throw new InvalidOperationException("공통 설정 SQLite 연결 문자열이 없습니다.");
+builder.Services.AddDbContext<CommonSettingsDbContext>(options => options.UseSqlite(commonSettingsConnectionString));
+builder.Services.AddScoped<EmployeeColumnSettingsService>();
 builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
@@ -156,6 +160,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.MapDashboardEndpoints();
 app.MapManagementEndpoints();
+app.MapSettingsEndpoints();
 app.MapAuthenticationEndpoints();
 
 var webRoot = app.Environment.WebRootPath;
@@ -171,12 +176,24 @@ app.MapGet("/organization.html", () => Results.File(Path.Combine(webRoot, "organ
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/management.html", () => Results.File(Path.Combine(webRoot, "management.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
+app.MapGet("/settings.html", () => Results.File(Path.Combine(webRoot, "settings.html"), "text/html; charset=utf-8"))
+    .RequireAuthorization("Administrator");
 app.MapGet("/js/dashboard.js", () => Results.File(Path.Combine(webRoot, "js", "dashboard.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/organization.js", () => Results.File(Path.Combine(webRoot, "js", "organization.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/management.js", () => Results.File(Path.Combine(webRoot, "js", "management.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
+app.MapGet("/js/settings.js", () => Results.File(Path.Combine(webRoot, "js", "settings.js"), "text/javascript; charset=utf-8"))
+    .RequireAuthorization("Administrator");
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var settingsDb=scope.ServiceProvider.GetRequiredService<CommonSettingsDbContext>();
+    await settingsDb.Database.EnsureCreatedAsync();
+    var settings=scope.ServiceProvider.GetRequiredService<EmployeeColumnSettingsService>();
+    await settings.EnsureSeededAsync();
+}
 
 await using (var scope = app.Services.CreateAsyncScope())
 {

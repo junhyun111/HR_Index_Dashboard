@@ -33,6 +33,9 @@ dotnet run
 - `GET /api/employees/export`: 직원 데이터를 Excel `.xlsx`로 내려받기
 - `POST /api/employees/import`: 수정된 `.csv`를 검증한 뒤 직원 추가/수정
 - `POST /api/employees/paste`: Excel에서 복사한 탭 구분 표를 검증한 뒤 직원 추가/수정
+- `GET /api/settings/employee-columns`: 공통 사원 DB 열 이름 설정 조회
+- `PUT /api/settings/employee-columns`: 공통 사원 DB 열 이름 설정 저장
+- `POST /api/settings/employee-columns/reset`: 사원 DB 열 이름 기본값 복원
 - `GET /api/integrations/status`: 설정된 외부 API 연결 확인
 
 외부 API는 `ExternalApi:BaseUrl`과 `ExternalApi:HealthPath`로 설정합니다. 사내 프록시와 방화벽 허용 정책은 서버 환경에 맞춰 별도로 적용해야 합니다.
@@ -44,3 +47,5 @@ dotnet run
 CSV 가져오기는 `직원 ID`가 있는 행을 수정하고 ID가 빈 행을 새 직원으로 추가합니다. 파일에서 삭제한 행은 DB에서 삭제되지 않습니다.
 
 DRM 환경에서는 CSV를 Excel로 연 뒤 머리글을 포함한 표 전체를 복사하여 `Excel 붙여넣기` 창에 붙여넣을 수 있습니다. 붙여넣은 데이터는 파일 업로드 없이 JSON 요청으로 전송됩니다.
+
+사원 DB 열의 사용자 표시 이름은 날짜별 사원 DB와 분리된 `App_Data/common-settings.db`에 저장됩니다. 내부 필드명은 변경하지 않으므로 그래프, 필터, 검색과 정렬 계산에는 영향을 주지 않습니다.

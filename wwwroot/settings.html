@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INNODEP 설정</title>
+  <script>(()=>{const k='hr-dashboard-theme',m=matchMedia('(prefers-color-scheme: dark)'),a=t=>{document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const b=document.getElementById('themeToggle');if(b){const d=t==='dark';b.textContent=d?'☀':'☾';b.title=d?'라이트 모드로 전환':'다크 모드로 전환';b.setAttribute('aria-label',b.title)}};a(localStorage.getItem(k)||(m.matches?'dark':'light'));addEventListener('DOMContentLoaded',()=>{const b=document.createElement('button');b.id='themeToggle';b.className='theme-toggle';b.type='button';b.onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(k,t);a(t)};const h=document.querySelector('.topbar');if(h){const r=h.lastElementChild,g=document.createElement('div');g.className='topbar-actions';r.replaceWith(g);g.append(b,r)}else{b.classList.add('theme-toggle-floating');document.body.append(b)}a(document.documentElement.dataset.theme)})})()</script>
+  <link rel="stylesheet" href="./css/style.css?v=20260724-dark2">
+  <link rel="stylesheet" href="./css/settings.css?v=20260727-columns1">
+</head>
+<body><div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="./index.html" aria-label="HR Index Dashboard 홈"><img src="images/innodep_logo_white.svg" alt="INNODEP"></a><div class="nav-title">WORKSPACE</div>
+    <a class="nav-item" href="./index.html"><span class="nav-icon">▦</span>HR 인덱스</a>
+    <a class="nav-item" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
+    <a class="nav-item" href="./management.html"><span class="nav-icon">▤</span>경영지표</a>
+    <a class="nav-item active" href="./settings.html"><span class="nav-icon">⚙</span>설정</a>
+    <div class="source-badge"><strong>공통 설정 DB</strong><br>서버 로컬 SQLite<br><span>common-settings.db</span></div>
+  </aside>
+  <main>
+    <header class="topbar"><div><h1>설정</h1><p class="subtitle">Workspace 전반에 적용되는 공통 설정을 관리합니다.</p></div><button class="theme-toggle theme-toggle-static" type="button" aria-label="다크모드 전환" onclick="const d=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem('hr-dashboard-theme',d);document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d"><span class="theme-sun">☀</span><span class="theme-moon">☾</span></button><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
+    <section class="settings-intro card">
+      <div><span class="settings-kicker">EMPLOYEE DATABASE</span><h2>사원 DB 열 관리</h2><p>화면과 Excel에서 사용하는 열 이름을 변경합니다. 내부 필드와 그래프 계산 기준은 유지되므로 이름을 바꿔도 기존 지표는 정상적으로 계산됩니다.</p></div>
+      <div class="settings-actions"><button class="data-button" id="resetColumnsBtn" type="button">기본 이름 복원</button><button class="data-button data-button-primary" id="saveColumnsBtn" type="button">변경사항 저장</button></div>
+    </section>
+    <section class="card settings-table-card">
+      <div class="settings-table-head"><div><h2>열 이름</h2><p>빈 이름이나 중복된 이름은 저장할 수 없습니다.</p></div><span id="settingsStatus" role="status"></span></div>
+      <div class="table-scroll"><table class="settings-table"><thead><tr><th>순서</th><th>내부 필드</th><th>기본 이름</th><th>표시 이름</th></tr></thead><tbody id="columnSettingRows"><tr><td colspan="4" class="settings-loading">설정을 불러오는 중입니다.</td></tr></tbody></table></div>
+    </section>
+  </main>
+</div>
+<script src="./js/settings.js?v=20260727-columns1"></script></body>
+</html>
