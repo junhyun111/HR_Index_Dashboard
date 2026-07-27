@@ -20,6 +20,7 @@ public static class DashboardEndpoints
         api.MapGet("/employees/search", SearchEmployees).RequireAuthorization("Editor");
         api.MapPost("/employees", CreateEmployee).RequireAuthorization("Editor");
         api.MapPut("/employees/{id:long}", UpdateEmployee).RequireAuthorization("Editor");
+        api.MapDelete("/employees/all", DeleteAllEmployees).RequireAuthorization("Editor");
         api.MapDelete("/employees/{id:long}", DeleteEmployee).RequireAuthorization("Editor");
         return endpoints;
     }
@@ -54,6 +55,16 @@ public static class DashboardEndpoints
     {
         var employee=await db.Employees.FindAsync([id],ct); if(employee==null) return Results.NotFound(new { message="직원을 찾을 수 없습니다." });
         db.Employees.Remove(employee); await TouchEmployeeData(db,ct); await db.SaveChangesAsync(ct); return Results.NoContent();
+    }
+
+    private static async Task<IResult> DeleteAllEmployees(AppDbContext db, CancellationToken ct)
+    {
+        await using var transaction=await db.Database.BeginTransactionAsync(ct);
+        var deleted=await db.Employees.ExecuteDeleteAsync(ct);
+        await TouchEmployeeData(db,ct);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return Results.Ok(new { deleted });
     }
 
     private static string? Validate(EmployeeRequest request)
