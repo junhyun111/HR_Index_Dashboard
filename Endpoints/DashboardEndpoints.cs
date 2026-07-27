@@ -165,22 +165,22 @@ public static class DashboardEndpoints
         if (!string.IsNullOrWhiteSpace(position)) query=query.Where(x=>x.Position==position);
         if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))); }
         var rows=Sort(await query.ToListAsync(ct),sort); var filteredCount=rows.Count;
-        var today=DateTime.Today;
-        var dataAsOf=databases.SelectedDate;
+        var dataAsOf=databases.SelectedDate.Date;
+        var referenceDate=dataAsOf;
         var lastModifiedAt=await ReadLastModifiedAt(db,ct);
         var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages);
         CountResponse[] Counts(Func<Employee,string?> pick)=>rows.Select(pick).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label).ToArray();
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct) },
-            summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,averageAge=AverageAge(rows,today),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,today),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==today.Year),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==today.Year&&x.TerminationDate.Value>=today) },
+            summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,averageAge=AverageAge(rows,referenceDate),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
             departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
-            tenureGroups=TenureGroups(rows,today),
+            tenureGroups=TenureGroups(rows,referenceDate),
             monthlyWages=MonthlyWageGroups(rows),
-            ageGroups=AgeGroups(rows,today),
-            monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),today.Year),
-            monthlyTerminations=MonthlyDateCounts(rows.Select(x=>x.TerminationDate),today.Year,today),
+            ageGroups=AgeGroups(rows,referenceDate),
+            monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),referenceDate.Year,null,referenceDate),
+            monthlyTerminations=MonthlyDateCounts(rows.Select(x=>x.TerminationDate),referenceDate.Year,referenceDate),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
         });
     }
@@ -239,11 +239,11 @@ public static class DashboardEndpoints
         return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
     }
 
-    private static CountResponse[] MonthlyDateCounts(IEnumerable<DateTime?> dates,int year,DateTime? from=null)
+    private static CountResponse[] MonthlyDateCounts(IEnumerable<DateTime?> dates,int year,DateTime? from=null,DateTime? through=null)
     {
         var counts=new int[12];
         foreach(var date in dates.Where(x=>x!=null).Select(x=>x!.Value.Date))
-            if(date.Year==year&&(from==null||date>=from.Value.Date)) counts[date.Month-1]++;
+            if(date.Year==year&&(from==null||date>=from.Value.Date)&&(through==null||date<=through.Value.Date)) counts[date.Month-1]++;
         return Enumerable.Range(1,12).Select(month=>new CountResponse($"{month}월",counts[month-1])).ToArray();
     }
 

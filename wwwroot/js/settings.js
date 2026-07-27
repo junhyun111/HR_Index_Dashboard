@@ -1,6 +1,27 @@
 const $=id=>document.getElementById(id);
 let sessionData=null,columnSettings=[],accounts=[];
 
+function showSettingsPanel(panelId,toggle=false){
+  let target=panelId?$(panelId):null;
+  if(target?.classList.contains('admin-only')&&!sessionData?.isAdministrator)target=null;
+  if(toggle&&target&&!target.hidden)target=null;
+  document.querySelectorAll('[data-settings-panel]').forEach(panel=>{
+    const active=panel===target;
+    panel.hidden=!active;
+    panel.classList.toggle('active',active);
+  });
+  document.querySelectorAll('[data-settings-target]').forEach(button=>{
+    const active=Boolean(target)&&button.dataset.settingsTarget===target.id;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-pressed',String(active));
+  });
+  document.querySelector('.settings-content')?.classList.toggle('has-selection',Boolean(target));
+}
+
+document.querySelectorAll('[data-settings-target]').forEach(button=>{
+  button.onclick=()=>showSettingsPanel(button.dataset.settingsTarget,true);
+});
+
 async function request(url,options){
   const response=await fetch(url,options);
   if(response.status===401){location.replace('/login');throw Error('로그인이 필요합니다.');}
@@ -16,7 +37,8 @@ async function initialize(){
     $('roleBadge').textContent=sessionData.isAdministrator?'관리자 권한':'일반 사용자';
     $('profileForm').elements.newLoginId.value=sessionData.userName||'';
     if(sessionData.theme)window.setDashboardTheme(sessionData.theme);
-    document.querySelectorAll('.admin-only').forEach(element=>element.hidden=!sessionData.isAdministrator);
+    document.querySelectorAll('.settings-menu-card.admin-only').forEach(element=>element.hidden=!sessionData.isAdministrator);
+    showSettingsPanel(null);
     if(sessionData.isAdministrator){
       const [accountRows,columns,history]=await Promise.all([
         request('/api/settings/accounts'),
