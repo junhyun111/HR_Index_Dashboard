@@ -11,7 +11,11 @@ public static class DashboardEndpoints
     public static IEndpointRouteBuilder MapDashboardEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api");
-        api.MapGet("/session", (HttpContext c) => Results.Ok(new { userName = c.User.Identity?.Name, canEdit = true, isAdministrator = true })).RequireAuthorization("DashboardViewer");
+        api.MapGet("/session", (HttpContext c) =>
+        {
+            var isAdministrator=c.User.IsInRole("Administrator");
+            return Results.Ok(new { userName=c.User.Identity?.Name,role=isAdministrator?"Administrator":"User",canEdit=isAdministrator,isAdministrator,theme=c.User.FindFirst("theme")?.Value??"light" });
+        }).RequireAuthorization("DashboardViewer");
         api.MapGet("/dashboard", Dashboard).RequireAuthorization("DashboardViewer");
         api.MapGet("/employee-dates", (DailyEmployeeDatabaseService databases) => Results.Ok(databases.AvailableDates())).RequireAuthorization("DashboardViewer");
         api.MapGet("/employees/headcount-trend", async (string? mode,DailyEmployeeDatabaseService databases,CancellationToken ct)

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>INNODEP HR 로그인</title>
-  <script>(()=>{const k='hr-dashboard-theme',m=matchMedia('(prefers-color-scheme: dark)'),a=t=>{document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const b=document.getElementById('themeToggle');if(b){const d=t==='dark';b.textContent=d?'☀':'☾';b.title=d?'라이트 모드로 전환':'다크 모드로 전환';b.setAttribute('aria-label',b.title)}};a(localStorage.getItem(k)||(m.matches?'dark':'light'));addEventListener('DOMContentLoaded',()=>{const b=document.createElement('button');b.id='themeToggle';b.className='theme-toggle';b.type='button';b.onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(k,t);a(t)};const h=document.querySelector('.topbar');if(h){const r=h.lastElementChild,g=document.createElement('div');g.className='topbar-actions';r.replaceWith(g);g.append(b,r)}else{b.classList.add('theme-toggle-floating');document.body.append(b)}a(document.documentElement.dataset.theme)})})()</script>
+  <script src="./js/theme.js?v=20260727-settings1"></script>
   <link rel="stylesheet" href="./css/login.css?v=20260724-dark1">
 </head>
 <body>
@@ -32,11 +32,13 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userName: document.getElementById('userName').value, password: document.getElementById('password').value })
         });
+        const data=await response.json().catch(()=>({}));
         if (!response.ok) {
           let message = '로그인하지 못했습니다.';
-          try { message = (await response.json()).message || message; } catch (_) {}
+          message=data.message||message;
           throw new Error(message);
         }
+        if(data.theme)window.setDashboardTheme(data.theme);
         const parameters = new URLSearchParams(location.search);
         const next = parameters.get('returnUrl') || parameters.get('ReturnUrl');
         location.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');

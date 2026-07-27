@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>INNODEP 조직 현황</title>
-  <script>(()=>{const k='hr-dashboard-theme',m=matchMedia('(prefers-color-scheme: dark)'),a=t=>{document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const b=document.getElementById('themeToggle');if(b){const d=t==='dark';b.textContent=d?'☀':'☾';b.title=d?'라이트 모드로 전환':'다크 모드로 전환';b.setAttribute('aria-label',b.title)}};a(localStorage.getItem(k)||(m.matches?'dark':'light'));addEventListener('DOMContentLoaded',()=>{const b=document.createElement('button');b.id='themeToggle';b.className='theme-toggle';b.type='button';b.onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(k,t);a(t)};const h=document.querySelector('.topbar');if(h){const r=h.lastElementChild,g=document.createElement('div');g.className='topbar-actions';r.replaceWith(g);g.append(b,r)}else{b.classList.add('theme-toggle-floating');document.body.append(b)}a(document.documentElement.dataset.theme)})})()</script>
+  <script src="./js/theme.js?v=20260727-settings1"></script>
   <link rel="stylesheet" href="./css/style.css?v=20260724-dark2">
   <link rel="stylesheet" href="./css/organization.css?v=20260727-compact-tree1">
 </head>
@@ -23,7 +23,6 @@
     <main>
       <header class="topbar">
         <div><h1>조직 현황</h1><p class="subtitle">조직 구조를 확인하고 변경사항을 직접 관리합니다.</p></div>
-        <button class="theme-toggle theme-toggle-static" type="button" aria-label="다크모드 전환" onclick="const d=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem('hr-dashboard-theme',d);document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d"><span class="theme-sun">☀</span><span class="theme-moon">☾</span></button>
         <div class="updated">조직도 · 브라우저 로컬 저장</div>
       </header>
 

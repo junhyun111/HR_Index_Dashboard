@@ -1,10 +1,8 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using HRDashboard.Configuration;
+using HRDashboard.Models;
+using HRDashboard.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.Extensions.Options;
 
 namespace HRDashboard.Endpoints;
 
@@ -23,31 +21,33 @@ public static class AuthenticationEndpoints
         return endpoints;
     }
 
-    private static async Task<IResult> LoginAsync(
-        LoginRequest request, HttpContext context, IOptions<LoginSettings> options)
+    private static async Task<IResult> LoginAsync(LoginRequest request,HttpContext context,UserAccountService accounts,CancellationToken ct)
     {
-        var settings = options.Value;
-        if (!FixedTimeEquals(request.UserName, settings.UserName) ||
-            !FixedTimeEquals(request.Password, settings.Password))
+        var loginId=request.UserName?.Trim()??"";
+        var user=await accounts.AuthenticateAsync(loginId,request.Password??"",ct);
+        if(user==null)
         {
-            await Task.Delay(Random.Shared.Next(150, 350), context.RequestAborted);
-            return Results.Json(new { message = "아이디 또는 비밀번호가 올바르지 않습니다." }, statusCode: 401);
+            await Task.Delay(Random.Shared.Next(150,350),ct);
+            return Results.Json(new{message="아이디 또는 비밀번호가 올바르지 않습니다."},statusCode:401);
         }
-
-        var claims = new[] { new Claim(ClaimTypes.Name, settings.UserName) };
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
-        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
-            new AuthenticationProperties { IsPersistent = false });
-        return Results.Ok(new { userName = settings.UserName });
+        await SignInAsync(context,user);
+        return Results.Ok(new{userName=user.LoginId,role=user.Role,isAdministrator=user.Role=="Administrator",theme=user.Theme});
     }
 
-    private static bool FixedTimeEquals(string? supplied, string expected)
+    public static async Task SignInAsync(HttpContext context,ApplicationUser user)
     {
-        var suppliedBytes = Encoding.UTF8.GetBytes(supplied ?? "");
-        var expectedBytes = Encoding.UTF8.GetBytes(expected);
-        return suppliedBytes.Length == expectedBytes.Length &&
-               CryptographicOperations.FixedTimeEquals(suppliedBytes, expectedBytes);
+        var claims=new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier,user.Id.ToString()),
+            new Claim(ClaimTypes.Name,user.LoginId),
+            new Claim(ClaimTypes.Role,user.Role),
+            new Claim("theme",user.Theme),
+            new Claim("securityStamp",user.UpdatedAtUtc.ToUnixTimeMilliseconds().ToString())
+        };
+        var principal=new ClaimsPrincipal(new ClaimsIdentity(claims,CookieAuthenticationDefaults.AuthenticationScheme));
+        await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,principal,
+            new AuthenticationProperties{IsPersistent=false});
     }
 }
 
-public sealed record LoginRequest(string? UserName, string? Password);
+public sealed record LoginRequest(string? UserName,string? Password);

@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>INNODEP HR Index</title><script>(()=>{const k='hr-dashboard-theme',m=matchMedia('(prefers-color-scheme: dark)'),a=t=>{document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const b=document.getElementById('themeToggle');if(b){const d=t==='dark';b.textContent=d?'☀':'☾';b.title=d?'라이트 모드로 전환':'다크 모드로 전환';b.setAttribute('aria-label',b.title)}};a(localStorage.getItem(k)||(m.matches?'dark':'light'));addEventListener('DOMContentLoaded',()=>{const b=document.createElement('button');b.id='themeToggle';b.className='theme-toggle';b.type='button';b.onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(k,t);a(t)};const h=document.querySelector('.topbar');if(h){const r=h.lastElementChild,g=document.createElement('div');g.className='topbar-actions';r.replaceWith(g);g.append(b,r)}else{b.classList.add('theme-toggle-floating');document.body.append(b)}a(document.documentElement.dataset.theme)})})()</script><link rel="stylesheet" href="./css/style.css?v=20260724-dark1">
+  <title>INNODEP HR Index</title><script src="./js/theme.js?v=20260727-settings1"></script><link rel="stylesheet" href="./css/style.css?v=20260724-dark1">
   <link rel="stylesheet" href="./css/style.css?v=20260727-employee-table1">
 </head>
 <body><div class="shell">
@@ -15,7 +15,7 @@
     <div class="source-badge"><strong>데이터 소스</strong><br>서버 로컬 SQLite<br><span id="sourceStatus">불러오는 중...</span></div>
   </aside>
   <main>
-    <header class="topbar"><div><h1><a class="home-title" href="./index.html">HR Index Dashboard</a></h1></div><button class="theme-toggle theme-toggle-static" type="button" aria-label="다크모드 전환" onclick="const d=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem('hr-dashboard-theme',d);document.documentElement.dataset.theme=d;document.documentElement.style.colorScheme=d"><span class="theme-sun">☀</span><span class="theme-moon">☾</span></button><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
+    <header class="topbar"><div><h1><a class="home-title" href="./index.html">HR Index Dashboard</a></h1></div><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
     <section class="filters card" id="filterArea" hidden>
       <label class="date-filter"><span>기준일</span><input id="employeeDateFilter" type="date" aria-label="사원 정보 기준일"></label>
       <select id="workplaceFilter"><option value="">전체 사업장</option></select><select id="deptFilter"><option value="">전체 부서</option></select>

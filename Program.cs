@@ -1,4 +1,3 @@
-using HRDashboard.Configuration;
 using HRDashboard.Data;
 using HRDashboard.Endpoints;
 using HRDashboard.Services;
@@ -7,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 
 var envPath=Path.Combine(Directory.GetCurrentDirectory(),".env");
@@ -28,11 +28,6 @@ var dataProtection = builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
 if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi();
 
-builder.Services.AddOptions<LoginSettings>()
-    .Bind(builder.Configuration.GetSection("Authentication"))
-    .Validate(x => !string.IsNullOrWhiteSpace(x.UserName) && !string.IsNullOrEmpty(x.Password),
-        "로그인 아이디와 비밀번호 설정이 필요합니다.")
-    .ValidateOnStart();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -64,13 +59,27 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             context.Response.Redirect(context.RedirectUri);
             return Task.CompletedTask;
         };
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var idValue=context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+            if(!long.TryParse(idValue,out var id)){context.RejectPrincipal();return;}
+            var db=context.HttpContext.RequestServices.GetRequiredService<CommonSettingsDbContext>();
+            var user=await db.Users.AsNoTracking().FirstOrDefaultAsync(x=>x.Id==id,context.HttpContext.RequestAborted);
+            var claimName=context.Principal?.Identity?.Name;
+            var claimRole=context.Principal?.FindFirstValue(ClaimTypes.Role);
+            var claimTheme=context.Principal?.FindFirstValue("theme");
+            var claimStamp=context.Principal?.FindFirstValue("securityStamp");
+            if(user==null||!user.IsActive||user.LoginId!=claimName||user.Role!=claimRole||user.Theme!=claimTheme
+                ||user.UpdatedAtUtc.ToUnixTimeMilliseconds().ToString()!=claimStamp)
+                context.RejectPrincipal();
+        };
     });
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("DashboardViewer", policy => policy.RequireAuthenticatedUser());
     options.AddPolicy("SalaryViewer", policy => policy.RequireAuthenticatedUser());
-    options.AddPolicy("Editor", policy => policy.RequireAuthenticatedUser());
-    options.AddPolicy("Administrator", policy => policy.RequireAuthenticatedUser());
+    options.AddPolicy("Editor", policy => policy.RequireRole("Administrator"));
+    options.AddPolicy("Administrator", policy => policy.RequireRole("Administrator"));
 });
 builder.Services.AddRateLimiter(options =>
 {
@@ -96,6 +105,7 @@ var commonSettingsConnectionString = builder.Configuration.GetConnectionString("
     ?? throw new InvalidOperationException("공통 설정 SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<CommonSettingsDbContext>(options => options.UseSqlite(commonSettingsConnectionString));
 builder.Services.AddScoped<EmployeeColumnSettingsService>();
+builder.Services.AddScoped<UserAccountService>();
 builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
@@ -145,6 +155,30 @@ app.Use(async (context,next) =>
             context.RequestAborted);
     }
     await next();
+    if(isEmployeeMutation&&context.Response.StatusCode<400)
+    {
+        var databases=context.RequestServices.GetRequiredService<DailyEmployeeDatabaseService>();
+        var settingsDb=context.RequestServices.GetRequiredService<CommonSettingsDbContext>();
+        var action=(context.Request.Method,context.Request.Path.Value) switch
+        {
+            ("POST",var path) when path?.EndsWith("/paste")==true=>"Excel 붙여넣기",
+            ("POST",var path) when path?.EndsWith("/import")==true=>"CSV 가져오기",
+            ("POST",_)=>"직원 추가",
+            ("PUT",_)=>"직원 수정",
+            ("DELETE",var path) when path?.EndsWith("/all")==true=>"전체 삭제",
+            ("DELETE",_)=>"직원 삭제",
+            _=>"사원 DB 변경"
+        };
+        settingsDb.EmployeeDatabaseChanges.Add(new HRDashboard.Models.EmployeeDatabaseChange
+        {
+            OccurredAtUtc=DateTimeOffset.UtcNow,
+            UserName=context.User.Identity?.Name??"알 수 없음",
+            DatabaseDate=databases.SelectedDate,
+            Action=action,
+            Detail=$"{context.Request.Method} {context.Request.Path} · HTTP {context.Response.StatusCode}"
+        });
+        await settingsDb.SaveChangesAsync(context.RequestAborted);
+    }
 });
 
 app.UseStaticFiles(new StaticFileOptions
@@ -177,7 +211,7 @@ app.MapGet("/organization.html", () => Results.File(Path.Combine(webRoot, "organ
 app.MapGet("/management.html", () => Results.File(Path.Combine(webRoot, "management.html"), "text/html; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/settings.html", () => Results.File(Path.Combine(webRoot, "settings.html"), "text/html; charset=utf-8"))
-    .RequireAuthorization("Administrator");
+    .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/dashboard.js", () => Results.File(Path.Combine(webRoot, "js", "dashboard.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/organization.js", () => Results.File(Path.Combine(webRoot, "js", "organization.js"), "text/javascript; charset=utf-8"))
@@ -185,14 +219,40 @@ app.MapGet("/js/organization.js", () => Results.File(Path.Combine(webRoot, "js",
 app.MapGet("/js/management.js", () => Results.File(Path.Combine(webRoot, "js", "management.js"), "text/javascript; charset=utf-8"))
     .RequireAuthorization("DashboardViewer");
 app.MapGet("/js/settings.js", () => Results.File(Path.Combine(webRoot, "js", "settings.js"), "text/javascript; charset=utf-8"))
-    .RequireAuthorization("Administrator");
+    .RequireAuthorization("DashboardViewer");
+app.MapGet("/js/theme.js", () => Results.File(Path.Combine(webRoot, "js", "theme.js"), "text/javascript; charset=utf-8"))
+    .AllowAnonymous();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var settingsDb=scope.ServiceProvider.GetRequiredService<CommonSettingsDbContext>();
     await settingsDb.Database.EnsureCreatedAsync();
+    await settingsDb.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS Users (
+          Id INTEGER NOT NULL CONSTRAINT PK_Users PRIMARY KEY AUTOINCREMENT,
+          LoginId TEXT NOT NULL,
+          PasswordHash TEXT NOT NULL,
+          Role TEXT NOT NULL,
+          Theme TEXT NOT NULL DEFAULT 'light',
+          IsActive INTEGER NOT NULL DEFAULT 1,
+          CreatedAtUtc TEXT NOT NULL,
+          UpdatedAtUtc TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_LoginId ON Users (LoginId);
+        CREATE TABLE IF NOT EXISTS EmployeeDatabaseChanges (
+          Id INTEGER NOT NULL CONSTRAINT PK_EmployeeDatabaseChanges PRIMARY KEY AUTOINCREMENT,
+          OccurredAtUtc TEXT NOT NULL,
+          UserName TEXT NOT NULL,
+          DatabaseDate TEXT NOT NULL,
+          Action TEXT NOT NULL,
+          Detail TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS IX_EmployeeDatabaseChanges_OccurredAtUtc ON EmployeeDatabaseChanges (OccurredAtUtc);
+        """);
     var settings=scope.ServiceProvider.GetRequiredService<EmployeeColumnSettingsService>();
     await settings.EnsureSeededAsync();
+    var accounts=scope.ServiceProvider.GetRequiredService<UserAccountService>();
+    await accounts.EnsureAdministratorAsync();
 }
 
 await using (var scope = app.Services.CreateAsyncScope())

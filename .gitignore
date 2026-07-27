@@ -4,6 +4,7 @@ App_Data/*.db
 App_Data/*.db-shm
 App_Data/*.db-wal
 App_Data/keys/
+App_Data/employee-daily/
 *.user
 *.suo
 .env

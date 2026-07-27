@@ -8,6 +8,8 @@ public sealed record HeadcountTrendResponse(string Mode,DateTime EndDate,IReadOn
 
 public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment,IHttpContextAccessor httpContextAccessor)
 {
+    private readonly object storageLock=new();
+
     public DateTime SelectedDate
     {
         get
@@ -21,9 +23,7 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
 
     public string PathFor(DateTime date)
     {
-        var directory=Path.Combine(environment.ContentRootPath,"App_Data");
-        Directory.CreateDirectory(directory);
-        return Path.Combine(directory,$"employee{date:yyMMdd}.db");
+        return Path.Combine(DatabaseDirectory(),$"employee{date:yyMMdd}.db");
     }
 
     public string ConnectionStringForSelectedDate()=>$"Data Source={PathFor(SelectedDate)}";
@@ -31,8 +31,7 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
 
     public object[] AvailableDates()
     {
-        var directory=Path.Combine(environment.ContentRootPath,"App_Data");
-        if(!Directory.Exists(directory))return [];
+        var directory=DatabaseDirectory();
         return Directory.GetFiles(directory,"employee??????.db")
             .Select(path=>new{Path=path,Name=Path.GetFileNameWithoutExtension(path)})
             .Select(x=>new{x.Path,Date=DateTime.TryParseExact(x.Name["employee".Length..],"yyMMdd",CultureInfo.InvariantCulture,DateTimeStyles.None,out var date)?date:(DateTime?)null})
@@ -75,8 +74,7 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
 
     private Dictionary<DateTime,string> AvailableDatabasePaths()
     {
-        var directory=Path.Combine(environment.ContentRootPath,"App_Data");
-        if(!Directory.Exists(directory))return [];
+        var directory=DatabaseDirectory();
         var result=new Dictionary<DateTime,string>();
         foreach(var path in Directory.GetFiles(directory,"employee??????.db"))
         {
@@ -88,6 +86,30 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
             }
         }
         return result;
+    }
+
+    private string DatabaseDirectory()
+    {
+        var dataDirectory=Path.Combine(environment.ContentRootPath,"App_Data");
+        var employeeDirectory=Path.Combine(dataDirectory,"employee-daily");
+        lock(storageLock)
+        {
+            Directory.CreateDirectory(employeeDirectory);
+            foreach(var sourcePath in Directory.GetFiles(dataDirectory,"employee??????.db",SearchOption.TopDirectoryOnly))
+            {
+                var destinationPath=Path.Combine(employeeDirectory,Path.GetFileName(sourcePath));
+                if(File.Exists(destinationPath))continue;
+                File.Move(sourcePath,destinationPath);
+                foreach(var suffix in new[]{"-wal","-shm"})
+                {
+                    var sourceSidecar=sourcePath+suffix;
+                    var destinationSidecar=destinationPath+suffix;
+                    if(File.Exists(sourceSidecar)&&!File.Exists(destinationSidecar))
+                        File.Move(sourceSidecar,destinationSidecar);
+                }
+            }
+        }
+        return employeeDirectory;
     }
 
     private static async Task<int> CountEmployeesAsync(string path,CancellationToken ct)

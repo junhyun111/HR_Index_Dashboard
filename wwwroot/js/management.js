@@ -9,7 +9,7 @@ async function load(){
     const r=await fetch('/api/management');
     if(r.status===401||r.status===403){location.replace('/login');return;}
     if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);
-    dashboard=await r.json();$('managementLoad').hidden=true;initializePeriod();render();
+    dashboard=await r.json();const session=await fetch('/api/session').then(x=>x.ok?x.json():null);if(session){$('syncBtn').hidden=!session.isAdministrator;if(session.theme)window.setDashboardTheme(session.theme);}$('managementLoad').hidden=true;initializePeriod();render();
   }catch(e){$('managementLoad').querySelector('h2').textContent='경영지표를 불러오지 못했습니다';$('managementMessage').textContent=e.message;}
 }
 
@@ -179,21 +179,3 @@ $('businessYearSelect').onchange=()=>{populatePeriods();render();};
 $('reportPeriodSelect').onchange=render;
 $('syncBtn').onclick=async()=>{if(!confirm('DART에서 이노뎁 최신 재무 데이터를 가져올까요?'))return;$('syncBtn').disabled=true;$('syncBtn').textContent='동기화 중...';try{const r=await fetch('/api/management/sync',{method:'POST'}),x=await r.json();if(!r.ok)throw Error(x.message||'동기화 실패');await load();}catch(e){alert(e.message);}finally{$('syncBtn').disabled=false;$('syncBtn').textContent='DART 새로고침';}};
 load();
-function ensureManagementThemeToggle(){
-  const topbar=document.querySelector('.topbar');
-  if(!topbar||topbar.querySelector('.theme-toggle-static'))return;
-  const button=document.createElement('button');
-  button.className='theme-toggle theme-toggle-static management-theme-toggle';
-  button.type='button';
-  button.setAttribute('aria-label','다크모드 전환');
-  button.innerHTML='<span class="theme-sun">☀</span><span class="theme-moon">☾</span>';
-  button.onclick=()=>{
-    const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
-    localStorage.setItem('hr-dashboard-theme',theme);
-    document.documentElement.dataset.theme=theme;
-    document.documentElement.style.colorScheme=theme;
-  };
-  const actions=topbar.querySelector('.topbar-actions');
-  topbar.insertBefore(button,actions||topbar.lastElementChild);
-}
-ensureManagementThemeToggle();
