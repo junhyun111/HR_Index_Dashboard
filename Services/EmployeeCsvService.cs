@@ -8,7 +8,7 @@ namespace HRDashboard.Services;
 public sealed class EmployeeCsvService
 {
     public static readonly string[] Headers=["사업장","상위부서","부서","사번","성명","직위","근무조","직책","직군","사원구분","성별","생년월일","입사일자","퇴사일자","월임금"];
-    private static readonly string[] RequiredHeaders=Headers.Where(x=>x is not "생년월일" and not "월임금").ToArray();
+    private static readonly string[] RequiredHeaders=["사번"];
     public byte[] Export(IReadOnlyCollection<Employee> employees)
     {
         var csv=new StringBuilder(); csv.AppendLine(string.Join(',',Headers.Select(Escape)));

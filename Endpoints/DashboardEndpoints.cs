@@ -2,6 +2,7 @@ using HRDashboard.Data;
 using HRDashboard.Models;
 using HRDashboard.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace HRDashboard.Endpoints;
 
@@ -140,7 +141,7 @@ public static class DashboardEndpoints
         if (!string.IsNullOrWhiteSpace(department)) query=query.Where(x=>x.Department==department||x.ParentDepartment==department);
         if (!string.IsNullOrWhiteSpace(position)) query=query.Where(x=>x.Position==position);
         if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))); }
-        var rows=Sort(await query.ToListAsync(ct),sort,direction); var filteredCount=rows.Count;
+        var rows=Sort(await query.ToListAsync(ct),sort); var filteredCount=rows.Count;
         var today=DateTime.Today;
         var dataAsOf=databases.SelectedDate;
         var lastModifiedAt=await ReadLastModifiedAt(db,ct);
@@ -258,10 +259,36 @@ public static class DashboardEndpoints
     }
 
     private static async Task<string[]> Values(IQueryable<string?> q,CancellationToken ct)=>await q.Where(x=>x!=null&&x!="").Select(x=>x!).Distinct().Order().ToArrayAsync(ct);
-    private static List<Employee> Sort(List<Employee> rows,string? sort,string? direction)
+    private static List<Employee> Sort(List<Employee> rows,string? sort)
     {
+        if(string.IsNullOrWhiteSpace(sort)) return rows;
+        var korean=StringComparer.Create(new CultureInfo("ko-KR"),ignoreCase:true);
+        if(sort=="workplace")
+        {
+            int WorkplaceOrder(string? value)=>value switch
+            {
+                null or ""=>0,
+                "이노뎁(주)"=>1,
+                "이노뎁(주) 안양센터"=>2,
+                "이노뎁(주) 부산지사"=>3,
+                _=>4
+            };
+            return rows.OrderBy(x=>WorkplaceOrder(x.Workplace))
+                .ThenBy(x=>x.Workplace,korean)
+                .ThenByDescending(x=>x.TerminationDate==null)
+                .ThenBy(x=>x.TerminationDate)
+                .ThenBy(x=>x.Name,korean)
+                .ToList();
+        }
+        if(sort=="terminationDate")
+            return rows.OrderByDescending(x=>x.TerminationDate==null)
+                .ThenBy(x=>x.TerminationDate)
+                .ThenBy(x=>x.Name,korean)
+                .ToList();
+        if(sort=="name")
+            return rows.OrderBy(x=>x.Name,korean).ToList();
         Func<Employee,object?> key=sort switch { "employeeNumber"=>x=>x.EmployeeNumber,"workplace"=>x=>x.Workplace,"parentDepartment"=>x=>x.ParentDepartment,"department"=>x=>x.Department,"position"=>x=>x.Position,"workShift"=>x=>x.WorkShift,"duty"=>x=>x.Duty,"jobGroup"=>x=>x.JobGroup,"employmentType"=>x=>x.EmploymentType,"gender"=>x=>x.Gender,"birthDate"=>x=>x.BirthDate,"hireDate"=>x=>x.HireDate,"terminationDate"=>x=>x.TerminationDate,"monthlyWage"=>x=>x.MonthlyWage,"name"=>x=>x.Name,_=>x=>x.Id };
-        return (direction=="desc"?rows.OrderByDescending(key):rows.OrderBy(key)).ToList();
+        return rows.OrderBy(key).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
     private sealed record EmployeePasteRequest(string Text,bool DeleteMissing=false);
