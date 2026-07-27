@@ -105,41 +105,46 @@ public static class DashboardEndpoints
         if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 CSV 파일을 선택하세요." });
         if (file.Length > 10 * 1024 * 1024 || !string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
             return Results.BadRequest(new { message = "10MB 이하의 CSV 파일만 업로드할 수 있습니다." });
-        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream), db, ct, false); }
+        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream), db, ct); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 
     private static async Task<IResult> Paste(EmployeePasteRequest request, AppDbContext db, EmployeeCsvService csv, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Text)) return Results.BadRequest(new { message = "붙여넣은 표가 비어 있습니다." });
-        try { return await Apply(csv.ParseClipboard(request.Text), db, ct, request.DeleteMissing); }
+        try { return await Apply(csv.ParseClipboard(request.Text), db, ct); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 
-    private static async Task<IResult> Apply(EmployeeImportResult import, AppDbContext db, CancellationToken ct, bool deleteMissing)
+    private static async Task<IResult> Apply(EmployeeImportResult import, AppDbContext db, CancellationToken ct)
     {
-        var numbers = import.Rows.Select(x => x.EmployeeNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
         // 날짜별 DB를 한 번만 읽어 대량 IN 절과 SQLite 매개변수 제한을 피한다.
         var saved = await db.Employees.ToListAsync(ct);
         var existing = saved.ToDictionary(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase);
-        var added = 0; var updated = 0; var deleted = 0;
+        var added = 0; var updated = 0;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         foreach (var row in import.Rows)
         {
             if (!existing.TryGetValue(row.EmployeeNumber, out var x)) { x = new Employee { EmployeeNumber = row.EmployeeNumber }; db.Add(x); added++; }
             else updated++;
-            x.Workplace=row.Workplace; x.ParentDepartment=row.ParentDepartment; x.Department=row.Department; x.Name=row.Name;
-            x.Position=row.Position; x.WorkShift=row.WorkShift; x.Duty=row.Duty; x.JobGroup=row.JobGroup;
-            x.EmploymentType=row.EmploymentType; x.Gender=row.Gender; x.BirthDate=row.BirthDate; x.HireDate=row.HireDate; x.TerminationDate=row.TerminationDate; x.MonthlyWage=row.MonthlyWage;
-        }
-        if(deleteMissing)
-        {
-            var missing=saved.Where(x=>!numbers.Contains(x.EmployeeNumber)).ToArray();
-            deleted=missing.Length; db.Employees.RemoveRange(missing);
+            if(import.PresentHeaders.Contains("사업장")&&row.Workplace!=null)x.Workplace=row.Workplace;
+            if(import.PresentHeaders.Contains("상위부서")&&row.ParentDepartment!=null)x.ParentDepartment=row.ParentDepartment;
+            if(import.PresentHeaders.Contains("부서")&&row.Department!=null)x.Department=row.Department;
+            if(import.PresentHeaders.Contains("성명")&&row.Name!=null)x.Name=row.Name;
+            if(import.PresentHeaders.Contains("직위")&&row.Position!=null)x.Position=row.Position;
+            if(import.PresentHeaders.Contains("근무조")&&row.WorkShift!=null)x.WorkShift=row.WorkShift;
+            if(import.PresentHeaders.Contains("직책")&&row.Duty!=null)x.Duty=row.Duty;
+            if(import.PresentHeaders.Contains("직군")&&row.JobGroup!=null)x.JobGroup=row.JobGroup;
+            if(import.PresentHeaders.Contains("사원구분")&&row.EmploymentType!=null)x.EmploymentType=row.EmploymentType;
+            if(import.PresentHeaders.Contains("성별")&&row.Gender!=null)x.Gender=row.Gender;
+            if(import.PresentHeaders.Contains("생년월일")&&row.BirthDate!=null)x.BirthDate=row.BirthDate;
+            if(import.PresentHeaders.Contains("입사일자")&&row.HireDate!=null)x.HireDate=row.HireDate;
+            if(import.PresentHeaders.Contains("퇴사일자")&&row.TerminationDate!=null)x.TerminationDate=row.TerminationDate;
+            if(import.PresentHeaders.Contains("월임금")&&row.MonthlyWage!=null)x.MonthlyWage=row.MonthlyWage;
         }
         await TouchEmployeeData(db,ct);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
-        return Results.Ok(new { added, updated, deleted, total = import.Rows.Count });
+        return Results.Ok(new { added, updated, total = import.Rows.Count });
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
@@ -302,6 +307,6 @@ public static class DashboardEndpoints
         return rows.OrderBy(key).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
-    private sealed record EmployeePasteRequest(string Text,bool DeleteMissing=false);
+    private sealed record EmployeePasteRequest(string Text);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? MonthlyWage);
 }
