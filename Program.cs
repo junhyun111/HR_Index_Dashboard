@@ -96,6 +96,7 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<DailyEmployeeDatabaseService>();
+builder.Services.AddHostedService<EmployeeDatabaseRetentionService>();
 builder.Services.AddDbContext<AppDbContext>((services,options)=>
     options.UseSqlite(services.GetRequiredService<DailyEmployeeDatabaseService>().ConnectionStringForSelectedDate()));
 var managementConnectionString = builder.Configuration.GetConnectionString("Management")

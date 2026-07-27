@@ -5,6 +5,7 @@ namespace HRDashboard.Services;
 
 public sealed record HeadcountTrendItem(string Label,int Value,DateTime TargetDate,DateTime? BasisDate);
 public sealed record HeadcountTrendResponse(string Mode,DateTime EndDate,IReadOnlyList<HeadcountTrendItem> Items);
+public sealed record EmployeeDatabaseCleanupResult(DateTime DatabaseDate,string FileName,bool Deleted,string? Error);
 
 public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment,IHttpContextAccessor httpContextAccessor)
 {
@@ -72,18 +73,38 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
         return new HeadcountTrendResponse(normalized,endDate,items);
     }
 
+    public IReadOnlyList<EmployeeDatabaseCleanupResult> DeleteExpiredDatabases(DateTime today)
+    {
+        var cutoff=today.Date.AddYears(-5);
+        var results=new List<EmployeeDatabaseCleanupResult>();
+        foreach(var path in Directory.GetFiles(DatabaseDirectory(),"employee??????.db",SearchOption.TopDirectoryOnly))
+        {
+            if(!TryDatabaseDate(path,out var databaseDate)||databaseDate>=cutoff)continue;
+            try
+            {
+                foreach(var suffix in new[]{"-wal","-shm"})
+                {
+                    var sidecar=path+suffix;
+                    if(File.Exists(sidecar))File.Delete(sidecar);
+                }
+                File.Delete(path);
+                results.Add(new EmployeeDatabaseCleanupResult(databaseDate,Path.GetFileName(path),!File.Exists(path),null));
+            }
+            catch(Exception e)when(e is IOException or UnauthorizedAccessException)
+            {
+                results.Add(new EmployeeDatabaseCleanupResult(databaseDate,Path.GetFileName(path),false,e.Message));
+            }
+        }
+        return results;
+    }
+
     private Dictionary<DateTime,string> AvailableDatabasePaths()
     {
         var directory=DatabaseDirectory();
         var result=new Dictionary<DateTime,string>();
         foreach(var path in Directory.GetFiles(directory,"employee??????.db"))
         {
-            var name=Path.GetFileNameWithoutExtension(path);
-            var value=name["employee".Length..];
-            if(value.Length==6&&int.TryParse(value[..2],out var year)&&int.TryParse(value.Substring(2,2),out var month)&&int.TryParse(value.Substring(4,2),out var day))
-            {
-                try{result[new DateTime(2000+year,month,day)]=path;}catch(ArgumentOutOfRangeException){ }
-            }
+            if(TryDatabaseDate(path,out var date))result[date]=path;
         }
         return result;
     }
@@ -110,6 +131,16 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
             }
         }
         return employeeDirectory;
+    }
+
+    private static bool TryDatabaseDate(string path,out DateTime date)
+    {
+        date=default;
+        var name=Path.GetFileNameWithoutExtension(path);
+        if(!name.StartsWith("employee",StringComparison.OrdinalIgnoreCase))return false;
+        var value=name["employee".Length..];
+        if(value.Length!=6||!int.TryParse(value[..2],out var year)||!int.TryParse(value.Substring(2,2),out var month)||!int.TryParse(value.Substring(4,2),out var day))return false;
+        try{date=new DateTime(2000+year,month,day);return true;}catch(ArgumentOutOfRangeException){return false;}
     }
 
     private static async Task<int> CountEmployeesAsync(string path,CancellationToken ct)
