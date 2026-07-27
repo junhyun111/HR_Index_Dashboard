@@ -14,6 +14,8 @@ public static class DashboardEndpoints
         api.MapGet("/session", (HttpContext c) => Results.Ok(new { userName = c.User.Identity?.Name, canEdit = true, isAdministrator = true })).RequireAuthorization("DashboardViewer");
         api.MapGet("/dashboard", Dashboard).RequireAuthorization("DashboardViewer");
         api.MapGet("/employee-dates", (DailyEmployeeDatabaseService databases) => Results.Ok(databases.AvailableDates())).RequireAuthorization("DashboardViewer");
+        api.MapGet("/employees/headcount-trend", async (string? mode,DailyEmployeeDatabaseService databases,CancellationToken ct)
+            =>Results.Ok(await databases.HeadcountTrendAsync(mode,ct))).RequireAuthorization("DashboardViewer");
         api.MapGet("/employees/export", Export).RequireAuthorization("Editor");
         api.MapPost("/employees/import", Import).DisableAntiforgery().RequireAuthorization("Editor");
         api.MapPost("/employees/paste", Paste).RequireAuthorization("Editor");
