@@ -123,8 +123,14 @@ public static class SettingsEndpoints
         if(loginId.Length<3||loginId.Length>120)return "아이디 또는 이메일은 3~120자로 입력해 주세요.";
         if(role=="User")
         {
-            try{var address=new MailAddress(loginId);if(!address.Address.Equals(loginId,StringComparison.OrdinalIgnoreCase))return "일반 사용자 계정은 이메일 형식으로 입력해 주세요.";}
-            catch(FormatException){return "일반 사용자 계정은 이메일 형식으로 입력해 주세요.";}
+            try
+            {
+                var address=new MailAddress(loginId);
+                if(!address.Address.Equals(loginId,StringComparison.OrdinalIgnoreCase)
+                    ||!address.Host.Equals("innodep.com",StringComparison.OrdinalIgnoreCase))
+                    return "일반 사용자 계정은 @innodep.com 이메일만 사용할 수 있습니다.";
+            }
+            catch(FormatException){return "일반 사용자 계정은 @innodep.com 이메일만 사용할 수 있습니다.";}
         }
         return null;
     }

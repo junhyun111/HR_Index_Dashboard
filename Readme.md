@@ -15,7 +15,7 @@ dotnet run
 
 계정은 `App_Data/common-settings.db`에서 관리합니다. 계정이 하나도 없을 때 최초 관리자 `admin / 1234`가 생성되며, 로그인 후 설정 화면에서 반드시 변경하는 것을 권장합니다. 비밀번호는 PBKDF2-SHA256 해시로 저장됩니다.
 
-관리자는 계정과 사원 DB 설정을 관리하고 사원 데이터를 변경할 수 있습니다. 일반 사용자는 대시보드를 조회하고 본인의 로그인 정보와 화면 모드만 변경할 수 있습니다. IIS에서는 Anonymous Authentication을 켜고 Windows Authentication을 끕니다. 애플리케이션 풀 계정에는 `App_Data` 폴더의 읽기/쓰기 권한이 필요합니다.
+관리자는 계정과 사원 DB 설정을 관리하고 사원 데이터를 변경할 수 있습니다. 일반 사용자 계정은 `@innodep.com` 이메일만 사용할 수 있으며, 대시보드를 조회하고 본인의 로그인 정보와 화면 모드만 변경할 수 있습니다. IIS에서는 Anonymous Authentication을 켜고 Windows Authentication을 끕니다. 애플리케이션 풀 계정에는 `App_Data` 폴더의 읽기/쓰기 권한이 필요합니다.
 
 ## 주요 API
 

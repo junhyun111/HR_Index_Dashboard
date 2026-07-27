@@ -42,9 +42,9 @@
     </div>
 
     <section class="card settings-panel admin-only" hidden>
-      <div class="panel-head panel-head-actions"><div><span class="panel-number">03</span><h2>계정별 권한 관리</h2><p>관리자와 일반 사용자 계정을 추가하고 로그인 정보 및 활성 상태를 관리합니다.</p></div></div>
+      <div class="panel-head panel-head-actions"><div><span class="panel-number">03</span><h2>계정별 권한 관리</h2><p>일반 사용자는 @innodep.com 이메일만 등록할 수 있습니다. 관리자 계정은 별도 아이디를 사용할 수 있습니다.</p></div></div>
       <form class="account-create" id="accountCreateForm">
-        <input name="loginId" type="text" maxlength="120" placeholder="이메일 또는 관리자 아이디" required>
+        <input name="loginId" type="text" maxlength="120" placeholder="name@innodep.com 또는 관리자 아이디" required>
         <input name="password" type="password" minlength="4" placeholder="초기 비밀번호" required>
         <select name="role"><option value="User">일반 사용자</option><option value="Administrator">관리자</option></select>
         <button class="data-button data-button-primary" type="submit">계정 추가</button>
