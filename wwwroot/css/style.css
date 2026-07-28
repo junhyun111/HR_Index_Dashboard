@@ -172,8 +172,8 @@ html[data-theme="dark"] .detail-column-value { fill:#c2cedc; }
 .density-grid { stroke: #e8eef5; stroke-width: 1; stroke-dasharray: 2 3; }
 .density-label, .density-tick { fill: #7b8a9c; font-size: 8px; }
 .density-label { font-weight: 700; }
-.density-hex { stroke: rgba(57,120,246,.28); stroke-width: .6; transition: opacity .15s, filter .15s; }
-.density-hex:hover { filter: brightness(1.12); }
+.density-point { fill: #35b7ca; fill-opacity: .58; stroke: #238ea1; stroke-width: .45; transition: r .12s, fill-opacity .12s; }
+.density-point:hover { r: 4px; fill-opacity: 1; }
 .legend { display: flex; justify-content: center; gap: 22px; margin-top: 16px; color: #617287; font-size: 11px; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
 .dot-male { background: var(--blue); }
