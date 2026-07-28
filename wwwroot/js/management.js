@@ -3,14 +3,14 @@ const count=v=>v==null?'-':`${number.format(v)}명`;
 const money=v=>v==null?'-':`${number.format(Math.round(v/10000000)/10)}억원`;
 const per=v=>v==null?'-':`${number.format(Math.round(v/10000))}만원`;
 const pct=v=>v==null||!Number.isFinite(v)?'-':`${number.format(Math.round(v*10)/10)}%`;
-let dashboard=null,mode='annual';
+let dashboard=null,mode='annual',canViewSalary=false;
 
 async function load(){
   try{
     const r=await fetch('/api/management');
     if(r.status===401||r.status===403){location.replace('/login');return;}
     if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);
-    dashboard=await r.json();const session=await fetch('/api/session').then(x=>x.ok?x.json():null);if(session){$('syncBtn').hidden=!session.isAdministrator;if(session.theme)window.setDashboardTheme(session.theme);}$('managementLoad').hidden=true;initializePeriod();render();
+    dashboard=await r.json();const session=await fetch('/api/session').then(x=>x.ok?x.json():null);if(session){canViewSalary=Boolean(session.canViewSalary);$('sessionUser').textContent=session.userName||'로그인 사용자';if(session.theme)window.setDashboardTheme(session.theme);}$('managementLoad').hidden=true;initializePeriod();render();
   }catch(e){$('managementLoad').querySelector('h2').textContent='경영지표를 불러오지 못했습니다';$('managementMessage').textContent=e.message;}
 }
 
@@ -59,8 +59,8 @@ function renderKpis(x){
 }
 
 function renderSummary(x){
-  $('headcount').textContent=count(dashboard.headcount);$('wageCount').textContent=count(dashboard.wageCount);
-  $('monthlyPayroll').textContent=money(dashboard.monthlyPayroll);$('debtRatio').textContent=pct(ratio(x.liabilities,x.equity));
+  $('headcount').textContent=count(dashboard.headcount);$('wageCount').textContent=canViewSalary?count(dashboard.wageCount):'권한 필요';
+  $('monthlyPayroll').textContent=canViewSalary?money(dashboard.monthlyPayroll):'권한 필요';$('debtRatio').textContent=pct(ratio(x.liabilities,x.equity));
   $('fsDiv').textContent=x.fsDiv==='CFS'?'연결재무제표':'별도재무제표';$('syncedAt').textContent=new Date(x.syncedAtUtc).toLocaleString('ko-KR');
   $('dartLink').href=x.receiptNumber?`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${encodeURIComponent(x.receiptNumber)}`:'https://dart.fss.or.kr/';
 }
@@ -170,7 +170,7 @@ function bindChartTooltip(id,rows,series,viewWidth,left,right){
 }
 
 function renderTable(rows){$('reportRows').innerHTML=[...rows].reverse().map(r=>`<tr><td>${r.businessYear} ${r.reportName}</td><td>${money(r.revenue)}</td><td>${money(r.operatingIncome)}</td><td>${money(r.netIncome)}</td><td>${money(r.assets)}</td><td>${money(r.liabilities)}</td><td>${money(r.equity)}</td></tr>`).join('');}
-function renderEmpty(){$('financeChart').innerHTML='<div class="finance-empty">DART 새로고침을 눌러 데이터를 가져오세요.</div>';$('reportRows').innerHTML='<tr><td class="table-empty" colspan="7">저장된 재무 데이터가 없습니다.</td></tr>';}
+function renderEmpty(){$('financeChart').innerHTML='<div class="finance-empty">설정에서 DART 데이터를 불러와 주세요.</div>';$('reportRows').innerHTML='<tr><td class="table-empty" colspan="7">저장된 재무 데이터가 없습니다.</td></tr>';}
 function ratio(a,b){return a!=null&&b? a/b*100:null;}
 function label(r){return mode==='annual'?String(r.businessYear):r.reportName;}
 function formatAxis(v){return Math.abs(v)>=1000?`${number.format(Math.round(v/100)/10)}천`:number.format(Math.round(v));}
@@ -178,5 +178,6 @@ function formatAxis(v){return Math.abs(v)>=1000?`${number.format(Math.round(v/10
 document.querySelectorAll('.period-toggle button').forEach(button=>button.onclick=()=>{mode=button.dataset.mode;document.querySelectorAll('.period-toggle button').forEach(x=>x.classList.toggle('active',x===button));populateYears();render();});
 $('businessYearSelect').onchange=()=>{populatePeriods();render();};
 $('reportPeriodSelect').onchange=render;
-$('syncBtn').onclick=async()=>{if(!confirm('DART에서 이노뎁 최신 재무 데이터를 가져올까요?'))return;$('syncBtn').disabled=true;$('syncBtn').textContent='동기화 중...';try{const r=await fetch('/api/management/sync',{method:'POST'}),x=await r.json();if(!r.ok)throw Error(x.message||'동기화 실패');await load();}catch(e){alert(e.message);}finally{$('syncBtn').disabled=false;$('syncBtn').textContent='DART 새로고침';}};
+document.querySelectorAll('[data-salary-access]').forEach(element=>element.onclick=()=>{if(!canViewSalary)alert('사용자 권한이 없습니다.');});
+$('logoutBtn').onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.replace('/login');};
 load();

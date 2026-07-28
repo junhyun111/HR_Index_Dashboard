@@ -117,7 +117,7 @@ public static class SettingsEndpoints
     }
     private static long? CurrentUserId(HttpContext context)=>long.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier),out var id)?id:null;
     private static object Account(ApplicationUser x)=>new{x.Id,x.LoginId,x.Role,x.Theme,x.IsActive,x.CreatedAtUtc,x.UpdatedAtUtc};
-    private static string? NormalizeRole(string? role)=>role is "Administrator" or "User"?role:null;
+    private static string? NormalizeRole(string? role)=>role is "Administrator" or "HrAdministrator" or "User"?role:null;
     private static string? ValidateLoginId(string loginId,string role)
     {
         if(loginId.Length<3||loginId.Length>120)return "아이디 또는 이메일은 3~120자로 입력해 주세요.";

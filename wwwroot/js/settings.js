@@ -4,6 +4,7 @@ let sessionData=null,columnSettings=[],accounts=[];
 function showSettingsPanel(panelId,toggle=false){
   let target=panelId?$(panelId):null;
   if(target?.classList.contains('admin-only')&&!sessionData?.isAdministrator)target=null;
+  if(target?.classList.contains('editor-only')&&!sessionData?.canEdit)target=null;
   if(toggle&&target&&!target.hidden)target=null;
   document.querySelectorAll('[data-settings-panel]').forEach(panel=>{
     const active=panel===target;
@@ -34,10 +35,11 @@ async function initialize(){
   try{
     sessionData=await request('/api/session');
     $('sessionUser').textContent=sessionData.userName||'로그인 사용자';
-    $('roleBadge').textContent=sessionData.isAdministrator?'관리자 권한':'일반 사용자';
+    $('roleBadge').textContent=sessionData.isAdministrator?'관리자 권한':sessionData.isHrAdministrator?'HR 관리자 권한':'일반 사용자';
     $('profileForm').elements.newLoginId.value=sessionData.userName||'';
     if(sessionData.theme)window.setDashboardTheme(sessionData.theme);
     document.querySelectorAll('.settings-menu-card.admin-only').forEach(element=>element.hidden=!sessionData.isAdministrator);
+    document.querySelectorAll('.settings-menu-card.editor-only').forEach(element=>element.hidden=!sessionData.canEdit);
     showSettingsPanel(null);
     if(sessionData.isAdministrator){
       const [accountRows,columns,history]=await Promise.all([
@@ -76,6 +78,17 @@ document.querySelectorAll('[data-theme-choice]').forEach(button=>button.onclick=
   }catch(error){setMessage('themeStatus',error.message,true);}
 });
 
+$('dartSyncBtn').onclick=async()=>{
+  if(!sessionData?.canEdit)return;
+  if(!confirm('DART에서 이노뎁 최신 재무 데이터를 가져올까요?'))return;
+  const button=$('dartSyncBtn');button.disabled=true;button.textContent='불러오는 중...';setMessage('dartStatus','최신 재무 공시 데이터를 확인하고 있습니다.');
+  try{
+    await request('/api/management/sync',{method:'POST'});
+    setMessage('dartStatus','DART 데이터를 새로 불러왔습니다.',false,true);
+  }catch(error){setMessage('dartStatus',error.message,true);}
+  finally{button.disabled=false;button.textContent='DART 새로고침';}
+};
+
 $('accountCreateForm').onsubmit=async event=>{
   event.preventDefault();const form=event.currentTarget,button=form.querySelector('button');
   button.disabled=true;setMessage('accountStatus','계정을 추가하고 있습니다.');
@@ -93,7 +106,7 @@ function renderAccounts(){
     const self=account.loginId===sessionData.userName;
     return `<tr data-id="${account.id}">
       <td><input data-field="loginId" maxlength="120" value="${escapeHtml(account.loginId)}" ${self?'disabled':''}>${self?'<span class="self-account">현재 로그인 계정</span>':''}</td>
-      <td><select data-field="role" ${self?'disabled':''}><option value="User" ${account.role==='User'?'selected':''}>일반 사용자</option><option value="Administrator" ${account.role==='Administrator'?'selected':''}>관리자</option></select></td>
+      <td><select data-field="role" ${self?'disabled':''}><option value="User" ${account.role==='User'?'selected':''}>일반 사용자</option><option value="HrAdministrator" ${account.role==='HrAdministrator'?'selected':''}>HR 관리자</option><option value="Administrator" ${account.role==='Administrator'?'selected':''}>관리자</option></select></td>
       <td><input data-field="newPassword" type="password" minlength="4" placeholder="${self?'로그인 관리에서 변경':'변경할 때만 입력'}" ${self?'disabled':''}></td>
       <td><label class="account-state"><input data-field="isActive" type="checkbox" ${account.isActive?'checked':''} ${self?'disabled':''}>${account.isActive?'활성':'비활성'}</label></td>
       <td><div class="account-actions">${self?'<span class="self-account">본인 계정</span>':`<button class="mini-button primary" type="button" data-action="save">저장</button><button class="mini-button danger" type="button" data-action="delete">삭제</button>`}</div></td>

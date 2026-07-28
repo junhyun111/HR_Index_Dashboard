@@ -14,7 +14,17 @@ public static class DashboardEndpoints
         api.MapGet("/session", (HttpContext c) =>
         {
             var isAdministrator=c.User.IsInRole("Administrator");
-            return Results.Ok(new { userName=c.User.Identity?.Name,role=isAdministrator?"Administrator":"User",canEdit=isAdministrator,isAdministrator,theme=c.User.FindFirst("theme")?.Value??"light" });
+            var isHrAdministrator=c.User.IsInRole("HrAdministrator");
+            return Results.Ok(new {
+                userName=c.User.Identity?.Name,
+                role=isAdministrator?"Administrator":isHrAdministrator?"HrAdministrator":"User",
+                canEdit=isAdministrator||isHrAdministrator,
+                canViewSalary=isAdministrator||isHrAdministrator,
+                canManageUsers=isAdministrator,
+                isAdministrator,
+                isHrAdministrator,
+                theme=c.User.FindFirst("theme")?.Value??"light"
+            });
         }).RequireAuthorization("DashboardViewer");
         api.MapGet("/dashboard", Dashboard).RequireAuthorization("DashboardViewer");
         api.MapGet("/employee-dates", (DailyEmployeeDatabaseService databases) => Results.Ok(databases.AvailableDates())).RequireAuthorization("DashboardViewer");
@@ -155,8 +165,10 @@ public static class DashboardEndpoints
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
-        string? sort, string? direction, int page, int pageSize, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
+        string? sort, string? direction, int page, int pageSize, HttpContext context, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
+        var canViewSalary=context.User.IsInRole("Administrator")||context.User.IsInRole("HrAdministrator");
+        if(!canViewSalary&&sort=="monthlyWage")sort=null;
         page=Math.Max(1,page); pageSize=Math.Clamp(pageSize==0?10:pageSize,1,100);
         // 조회만으로 빈 날짜 DB를 만들지 않는다. 기존에 남아 있는 빈 파일도 빈 화면으로 처리한다.
         if(!await databases.SelectedDatabaseHasEmployeesTableAsync(ct)) return EmptyDashboard(databases.SelectedDate,page,pageSize);
@@ -172,14 +184,19 @@ public static class DashboardEndpoints
         var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages);
         CountResponse[] Counts(Func<Employee,string?> pick)=>rows.Select(pick).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label).ToArray();
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
+        var averageMonthlyWage=canViewSalary?AverageMonthlyWage(rows):null;
+        var monthlyWages=canViewSalary?MonthlyWageGroups(rows):Array.Empty<CountResponse>();
+        if(!canViewSalary)
+            foreach(var employee in rows)employee.MonthlyWage=null;
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct) },
-            summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,averageAge=AverageAge(rows,referenceDate),averageMonthlyWage=AverageMonthlyWage(rows),averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
+            summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,averageAge=AverageAge(rows,referenceDate),averageMonthlyWage,averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
             departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,referenceDate),
-            monthlyWages=MonthlyWageGroups(rows),
+            monthlyWages,
             ageGroups=AgeGroups(rows,referenceDate),
+            ageTenurePoints=AgeTenurePoints(rows,referenceDate),
             monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),referenceDate.Year,null,referenceDate),
             monthlyTerminations=MonthlyDateCounts(rows.Select(x=>x.TerminationDate),referenceDate.Year,referenceDate),
             employees=rows.Skip((page-1)*pageSize).Take(pageSize),pagination=new {page,pageSize,pages,totalCount=filteredCount}
@@ -208,7 +225,7 @@ public static class DashboardEndpoints
             filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>() },
             summary=new { totalCount=0,filteredCount=0,dataAsOf,lastModifiedAt=(DateTimeOffset?)null,averageAge=(double?)null,averageMonthlyWage=(long?)null,averageTenure=(double?)null,hiresThisYear=0,terminationsThisYear=0 },
             departments=Array.Empty<CountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
-            tenureGroups=Array.Empty<CountResponse>(),monthlyWages=Array.Empty<CountResponse>(),ageGroups=Array.Empty<CountResponse>(),
+            tenureGroups=Array.Empty<CountResponse>(),monthlyWages=Array.Empty<CountResponse>(),ageGroups=Array.Empty<CountResponse>(),ageTenurePoints=Array.Empty<AgeTenurePoint>(),
             monthlyHires=months,monthlyTerminations=months,employees=Array.Empty<Employee>(),
             pagination=new {page,pageSize,pages=1,totalCount=0}
         });
@@ -267,6 +284,14 @@ public static class DashboardEndpoints
         return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
     }
 
+    private static AgeTenurePoint[] AgeTenurePoints(IEnumerable<Employee> rows,DateTime today)
+        =>rows.Where(x=>x.BirthDate!=null&&x.HireDate!=null)
+            .Select(x=>new AgeTenurePoint(
+                Math.Round((today-x.BirthDate!.Value.Date).TotalDays/365.2425,2),
+                Math.Round((today-x.HireDate!.Value.Date).TotalDays/365.2425,2)))
+            .Where(x=>x.Age>=0&&x.Age<=100&&x.Tenure>=0)
+            .ToArray();
+
     private static double? AverageMonthlyWage(IEnumerable<Employee> rows)
     {
         var wages=rows.Where(x=>x.MonthlyWage!=null).Select(x=>x.MonthlyWage!.Value).ToArray();
@@ -315,6 +340,7 @@ public static class DashboardEndpoints
         return rows.OrderBy(key).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
+    private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? MonthlyWage);
 }

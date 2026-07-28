@@ -20,7 +20,7 @@
     <div class="source-badge"><strong>데이터 소스</strong><br>금융감독원 OpenDART<br><span id="dartStatus">확인 중...</span></div>
   </aside>
   <main>
-    <header class="topbar"><div><h1>경영지표</h1></div><button class="data-button data-button-primary sync-button" id="syncBtn">DART 새로고침</button></header>
+    <header class="topbar"><div><h1>경영지표</h1></div><div class="session-box"><span id="sessionUser">로그인 사용자</span><button id="logoutBtn" type="button">로그아웃</button></div></header>
     <div class="management-toolbar"><div class="period-controls"><div class="period-toggle"><button class="active" type="button" data-mode="annual">연별</button><button type="button" data-mode="quarterly">분기별</button></div><select id="businessYearSelect" aria-label="사업연도"></select><select id="reportPeriodSelect" aria-label="공시 기간" hidden></select></div></div>
     <section class="management-kpis" id="managementKpis">
       <article class="card management-kpi"><span>매출액</span><strong id="revenue">-</strong><small id="reportPeriod">최신 공시</small></article>
@@ -30,13 +30,13 @@
     </section>
     <section class="hr-metric-grid">
       <article class="card hr-chart-card"><div class="card-head"><div><h2 class="card-title">인력 생산성 추이</h2><p>인당 매출은 현재 재직 인원 기준입니다.</p></div><span class="metric-unit">만원</span></div><div class="chart-legend"><span><i class="legend-line revenue-line"></i>인당 매출</span><span><i class="legend-line salary-line"></i>평균 급여</span></div><div class="hr-chart" id="productivityChart"></div></article>
-      <article class="card hr-chart-card"><div class="card-head"><div><h2 class="card-title">인건비 효율 추이</h2><p>DART 급여총액이 있는 기간만 표시합니다.</p></div><span class="metric-unit">%</span></div><div class="chart-legend"><span><i class="legend-line cost-line"></i>인건비 비율</span><span><i class="legend-line roi-line"></i>인건비 투자수익률</span></div><div class="hr-chart" id="laborEfficiencyChart"></div></article>
+      <article class="card hr-chart-card" data-salary-access><div class="card-head"><div><h2 class="card-title">인건비 효율 추이</h2><p>DART 급여총액이 있는 기간만 표시합니다.</p></div><span class="metric-unit">%</span></div><div class="chart-legend"><span><i class="legend-line cost-line"></i>인건비 비율</span><span><i class="legend-line roi-line"></i>인건비 투자수익률</span></div><div class="hr-chart" id="laborEfficiencyChart"></div></article>
     </section>
     <section class="management-grid">
       <article class="card management-chart-card"><div class="card-head"><h2 class="card-title" id="financeChartTitle">연도별 매출·영업이익 추이</h2><span class="metric-unit">억원</span></div><div class="chart-legend"><span><i class="legend-line revenue-line"></i>매출액</span><span><i class="legend-line operating-line"></i>영업이익</span></div><div class="finance-chart" id="financeChart"></div></article>
       <article class="card management-chart-card summary-card"><div class="card-head"><h2 class="card-title">재무·인력 요약</h2></div><dl class="management-summary">
-        <div><dt>현재 재직 인원</dt><dd id="headcount">-</dd></div><div><dt>월임금 입력 인원</dt><dd id="wageCount">-</dd></div>
-        <div><dt>월 급여 합계</dt><dd id="monthlyPayroll">-</dd></div><div><dt>부채비율</dt><dd id="debtRatio">-</dd></div>
+        <div><dt>현재 재직 인원</dt><dd id="headcount">-</dd></div><div data-salary-access><dt>월임금 입력 인원</dt><dd id="wageCount">-</dd></div>
+        <div data-salary-access><dt>월 급여 합계</dt><dd id="monthlyPayroll">-</dd></div><div><dt>부채비율</dt><dd id="debtRatio">-</dd></div>
         <div><dt>재무제표 구분</dt><dd id="fsDiv">-</dd></div><div><dt>마지막 동기화</dt><dd id="syncedAt">-</dd></div>
       </dl></article>
     </section>
@@ -45,4 +45,4 @@
     </article>
     <section class="card load-state" id="managementLoad"><h2>경영지표를 불러오는 중입니다</h2><p id="managementMessage">잠시만 기다려 주세요.</p></section>
   </main>
-</div><div class="chart-tooltip" id="chartTooltip" hidden></div><script src="./js/management.js?v=20260724-all-reports1"></script></body></html>
+</div><div class="chart-tooltip" id="chartTooltip" hidden></div><script src="./js/management.js?v=20260728-session-box1"></script></body></html>

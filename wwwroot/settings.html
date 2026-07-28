@@ -24,6 +24,7 @@
       <nav class="settings-menu" aria-label="설정 항목">
       <button class="settings-menu-card" type="button" data-settings-target="profilePanel" aria-controls="profilePanel" aria-pressed="false"><span class="settings-menu-icon">ID</span><span><strong>로그인 관리</strong><small>아이디 및 비밀번호</small></span><i>›</i></button>
       <button class="settings-menu-card" type="button" data-settings-target="themePanel" aria-controls="themePanel" aria-pressed="false"><span class="settings-menu-icon">Aa</span><span><strong>화면 표시</strong><small>라이트 및 다크 모드</small></span><i>›</i></button>
+      <button class="settings-menu-card editor-only" type="button" data-settings-target="dartPanel" aria-controls="dartPanel" aria-pressed="false" hidden><span class="settings-menu-icon">D</span><span><strong>DART 데이터 관리</strong><small>재무 공시 데이터 불러오기</small></span><i>›</i></button>
       <button class="settings-menu-card admin-only" type="button" data-settings-target="accountsPanel" aria-controls="accountsPanel" aria-pressed="false" hidden><span class="settings-menu-icon">AC</span><span><strong>계정별 권한 관리</strong><small>계정 및 접근 권한</small></span><i>›</i></button>
       <button class="settings-menu-card admin-only" type="button" data-settings-target="columnsPanel" aria-controls="columnsPanel" aria-pressed="false" hidden><span class="settings-menu-icon">DB</span><span><strong>사원 DB 열 관리</strong><small>열 표시 이름</small></span><i>›</i></button>
       <button class="settings-menu-card admin-only" type="button" data-settings-target="historyPanel" aria-controls="historyPanel" aria-pressed="false" hidden><span class="settings-menu-icon">LOG</span><span><strong>DB 업데이트 현황</strong><small>변경 작업 기록</small></span><i>›</i></button>
@@ -49,12 +50,20 @@
         <span class="settings-message theme-status" id="themeStatus"></span>
       </section>
 
+      <section class="card settings-panel editor-only" id="dartPanel" data-settings-panel hidden>
+        <div class="panel-head"><h2>DART 데이터 관리</h2></div>
+        <div class="settings-form">
+          <p>금융감독원 OpenDART에서 이노뎁의 최신 재무 공시 데이터를 불러옵니다.</p>
+          <div class="form-footer"><span class="settings-message" id="dartStatus"></span><button class="data-button data-button-primary" id="dartSyncBtn" type="button">DART 새로고침</button></div>
+        </div>
+      </section>
+
       <section class="card settings-panel admin-only" id="accountsPanel" data-settings-panel hidden>
         <div class="panel-head"><h2>계정별 권한 관리</h2></div>
         <form class="account-create" id="accountCreateForm">
           <input name="loginId" type="text" maxlength="120" placeholder="name@innodep.com 또는 관리자 아이디" required>
           <input name="password" type="password" minlength="4" placeholder="초기 비밀번호" required>
-          <select name="role"><option value="User">일반 사용자</option><option value="Administrator">관리자</option></select>
+          <select name="role"><option value="User">일반 사용자</option><option value="HrAdministrator">HR 관리자</option><option value="Administrator">관리자</option></select>
           <button class="data-button data-button-primary" type="submit">계정 추가</button>
         </form>
         <span class="settings-message account-status" id="accountStatus"></span>
@@ -75,5 +84,5 @@
     </div>
   </main>
 </div>
-<script src="./js/settings.js?v=20260727-panel-toggle1"></script></body>
+<script src="./js/settings.js?v=20260728-dart-settings1"></script></body>
 </html>

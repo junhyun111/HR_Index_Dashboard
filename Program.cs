@@ -77,8 +77,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("DashboardViewer", policy => policy.RequireAuthenticatedUser());
-    options.AddPolicy("SalaryViewer", policy => policy.RequireAuthenticatedUser());
-    options.AddPolicy("Editor", policy => policy.RequireRole("Administrator"));
+    options.AddPolicy("SalaryViewer", policy => policy.RequireRole("Administrator","HrAdministrator"));
+    options.AddPolicy("Editor", policy => policy.RequireRole("Administrator","HrAdministrator"));
     options.AddPolicy("Administrator", policy => policy.RequireRole("Administrator"));
 });
 builder.Services.AddRateLimiter(options =>

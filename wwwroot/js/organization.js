@@ -52,6 +52,7 @@ const $ = id => document.getElementById(id);
 let organization = loadOrganization();
 let editingOrgId = null;
 let organizationDirty = false;
+let canEditOrganization = false;
 
 function cloneOrganization(data) {
   return data.map(item => ({ ...item }));
@@ -115,9 +116,11 @@ function createOrgBranch(item, isRoot = false) {
   name.textContent = item.name;
   const edit = document.createElement('span');
   edit.className = 'org-edit-hint';
-  edit.textContent = '수정';
+  edit.textContent = canEditOrganization ? '수정' : '';
   card.append(name, edit);
-  card.addEventListener('click', () => openOrgDialog(item.id));
+  card.disabled = !canEditOrganization;
+  card.classList.toggle('org-node-readonly', !canEditOrganization);
+  if (canEditOrganization) card.addEventListener('click', () => openOrgDialog(item.id));
   branch.append(card);
 
   const children = organization.filter(candidate => candidate.parentId === item.id);
@@ -143,6 +146,7 @@ function descendantIds(id) {
 }
 
 function openOrgDialog(id = null) {
+  if (!canEditOrganization) return;
   editingOrgId = id;
   const item = id ? organization.find(candidate => candidate.id === id) : null;
   $('orgDialogTitle').textContent = item ? '조직 정보 수정' : '새 조직 추가';
@@ -170,6 +174,7 @@ function openOrgDialog(id = null) {
 }
 
 function markOrganizationDirty(message = '저장되지 않은 변경사항이 있습니다.') {
+  if (!canEditOrganization) return;
   organizationDirty = true;
   $('orgStatus').textContent = message;
   $('orgStatus').classList.add('is-dirty');
@@ -179,6 +184,7 @@ function markOrganizationDirty(message = '저장되지 않은 변경사항이 �
 
 $('orgForm').addEventListener('submit', event => {
   event.preventDefault();
+  if (!canEditOrganization) return;
   const name = $('orgName').value.trim();
   if (!name) {
     $('orgFormError').textContent = '조직명을 입력해 주세요.';
@@ -202,6 +208,7 @@ $('orgForm').addEventListener('submit', event => {
 });
 
 $('orgDeleteBtn').addEventListener('click', () => {
+  if (!canEditOrganization) return;
   const item = organization.find(candidate => candidate.id === editingOrgId);
   if (!item || item.parentId === null) return;
   const descendants = descendantIds(item.id);
@@ -214,8 +221,11 @@ $('orgDeleteBtn').addEventListener('click', () => {
   markOrganizationDirty();
 });
 
-$('orgAddBtn').addEventListener('click', () => openOrgDialog());
+$('orgAddBtn').addEventListener('click', () => {
+  if (canEditOrganization) openOrgDialog();
+});
 $('orgSaveBtn').addEventListener('click', () => {
+  if (!canEditOrganization) return;
   try {
     localStorage.setItem(ORG_STORAGE_KEY, JSON.stringify(organization));
     organizationDirty = false;
@@ -230,6 +240,7 @@ $('orgSaveBtn').addEventListener('click', () => {
 });
 
 $('orgResetBtn').addEventListener('click', () => {
+  if (!canEditOrganization) return;
   if (!confirm('처음 전달받은 조직 구성으로 되돌리시겠습니까? 저장 버튼을 누르기 전까지는 확정되지 않습니다.')) return;
   organization = cloneOrganization(DEFAULT_ORGANIZATION);
   renderOrganization();
@@ -246,8 +257,14 @@ $('orgExportBtn').addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
-$('orgImportBtn').addEventListener('click', () => $('orgFileInput').click());
+$('orgImportBtn').addEventListener('click', () => {
+  if (canEditOrganization) $('orgFileInput').click();
+});
 $('orgFileInput').addEventListener('change', async event => {
+  if (!canEditOrganization) {
+    event.target.value = '';
+    return;
+  }
   const file = event.target.files[0];
   if (!file) return;
   try {
@@ -269,5 +286,44 @@ window.addEventListener('beforeunload', event => {
   event.returnValue = '';
 });
 
-$('sideOrgStatus').textContent = `${organization.length}개 조직 불러옴`;
-renderOrganization();
+function applyOrganizationPermissions() {
+  ['orgImportBtn','orgResetBtn','orgAddBtn','orgSaveBtn'].forEach(id => {
+    $(id).hidden = !canEditOrganization;
+  });
+  document.querySelector('.topbar .subtitle').textContent = canEditOrganization
+    ? '조직 구조를 확인하고 변경사항을 직접 관리합니다.'
+    : '조직 구조를 확인할 수 있습니다.';
+  document.querySelector('.org-toolbar strong').textContent = canEditOrganization ? '조직도 관리' : '조직도';
+  document.querySelector('.org-guide > span:first-child').textContent = canEditOrganization
+    ? '카드를 선택하면 조직명과 상위 조직을 수정할 수 있습니다.'
+    : '조직도 변경은 HR 관리자 또는 관리자만 가능합니다.';
+  $('orgStatus').textContent = '저장된 조직도를 불러왔습니다.';
+  $('sideOrgStatus').textContent = `${organization.length}개 조직 불러옴`;
+}
+
+async function initializeOrganization() {
+  try {
+    const response = await fetch('/api/session');
+    if (response.status === 401) {
+      location.replace('/login');
+      return;
+    }
+    if (response.ok) {
+      const session = await response.json();
+      canEditOrganization = Boolean(session.canEdit);
+      $('sessionUser').textContent = session.userName || '로그인 사용자';
+      if (session.theme) window.setDashboardTheme(session.theme);
+    }
+  } catch (_) {
+    canEditOrganization = false;
+  }
+  applyOrganizationPermissions();
+  renderOrganization();
+}
+
+$('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', { method:'POST' });
+  location.replace('/login');
+};
+
+initializeOrganization();
