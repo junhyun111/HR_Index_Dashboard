@@ -1,4 +1,5 @@
 const $=id=>document.getElementById(id),number=new Intl.NumberFormat('ko-KR');
+const count=v=>v==null?'-':`${number.format(v)}명`;
 const money=v=>v==null?'-':`${number.format(Math.round(v/10000000)/10)}억원`;
 const per=v=>v==null?'-':`${number.format(Math.round(v/10000))}만원`;
 const pct=v=>v==null||!Number.isFinite(v)?'-':`${number.format(Math.round(v*10)/10)}%`;
@@ -58,7 +59,7 @@ function renderKpis(x){
 }
 
 function renderSummary(x){
-  $('headcount').textContent=`${number.format(dashboard.headcount)}명`;$('wageCount').textContent=`${number.format(dashboard.wageCount)}명`;
+  $('headcount').textContent=count(dashboard.headcount);$('wageCount').textContent=count(dashboard.wageCount);
   $('monthlyPayroll').textContent=money(dashboard.monthlyPayroll);$('debtRatio').textContent=pct(ratio(x.liabilities,x.equity));
   $('fsDiv').textContent=x.fsDiv==='CFS'?'연결재무제표':'별도재무제표';$('syncedAt').textContent=new Date(x.syncedAtUtc).toLocaleString('ko-KR');
   $('dartLink').href=x.receiptNumber?`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${encodeURIComponent(x.receiptNumber)}`:'https://dart.fss.or.kr/';

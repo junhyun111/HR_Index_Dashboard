@@ -34,7 +34,23 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
 
     public async Task<bool> SelectedDatabaseHasEmployeesTableAsync(CancellationToken ct)
     {
-        var path=PathFor(SelectedDate);
+        return await DatabaseHasEmployeesTableAsync(PathFor(SelectedDate),ct);
+    }
+
+    public async Task<(DateTime Date,string Path)?> LatestDatabaseWithEmployeesAsync(CancellationToken ct)
+    {
+        foreach(var item in AvailableDatabasePaths()
+            .Where(x=>x.Key<=SelectedDate.Date)
+            .OrderByDescending(x=>x.Key))
+        {
+            if(await DatabaseHasEmployeesTableAsync(item.Value,ct))
+                return (item.Key,item.Value);
+        }
+        return null;
+    }
+
+    private static async Task<bool> DatabaseHasEmployeesTableAsync(string path,CancellationToken ct)
+    {
         if(!File.Exists(path)) return false;
         try
         {
