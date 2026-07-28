@@ -1,5 +1,7 @@
 using System.Globalization;
+using HRDashboard.Data;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 
 namespace HRDashboard.Services;
 
@@ -29,6 +31,42 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
 
     public string ConnectionStringForSelectedDate()=>$"Data Source={PathFor(SelectedDate)}";
     public bool SelectedDatabaseExists()=>File.Exists(PathFor(SelectedDate));
+
+    public async Task<bool> SelectedDatabaseHasEmployeesTableAsync(CancellationToken ct)
+    {
+        var path=PathFor(SelectedDate);
+        if(!File.Exists(path)) return false;
+        try
+        {
+            await using var connection=new SqliteConnection($"Data Source={path};Mode=ReadOnly");
+            await connection.OpenAsync(ct);
+            await using var command=connection.CreateCommand();
+            command.CommandText="SELECT 1 FROM sqlite_master WHERE type='table' AND name='Employees' LIMIT 1";
+            return await command.ExecuteScalarAsync(ct)!=null;
+        }
+        catch(SqliteException)
+        {
+            return false;
+        }
+    }
+
+    public async Task MigrateSelectedDatabaseAsync(AppDbContext db,CancellationToken ct)
+    {
+        // EnsureCreated로 만든 기존 날짜별 DB에는 EF 마이그레이션 이력이 없다.
+        // 현재 스키마를 최초 마이그레이션 기준점으로 한 번만 등록해 이후 변경부터는 EF가 관리한다.
+        if(await SelectedDatabaseHasEmployeesTableAsync(ct))
+        {
+            await db.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS __EFMigrationsHistory (
+                    MigrationId TEXT NOT NULL CONSTRAINT PK___EFMigrationsHistory PRIMARY KEY,
+                    ProductVersion TEXT NOT NULL
+                );
+                INSERT OR IGNORE INTO __EFMigrationsHistory (MigrationId, ProductVersion)
+                VALUES ('20260728002109_InitialEmployeeDatabase', '10.0.10');
+                """,ct);
+        }
+        await db.Database.MigrateAsync(ct);
+    }
 
     public object[] AvailableDates()
     {

@@ -158,7 +158,8 @@ public static class DashboardEndpoints
         string? sort, string? direction, int page, int pageSize, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
         page=Math.Max(1,page); pageSize=Math.Clamp(pageSize==0?10:pageSize,1,100);
-        if(!databases.SelectedDatabaseExists()) return EmptyDashboard(databases.SelectedDate,page,pageSize);
+        // 조회만으로 빈 날짜 DB를 만들지 않는다. 기존에 남아 있는 빈 파일도 빈 화면으로 처리한다.
+        if(!await databases.SelectedDatabaseHasEmployeesTableAsync(ct)) return EmptyDashboard(databases.SelectedDate,page,pageSize);
         var totalCount=await db.Employees.CountAsync(ct); var query=db.Employees.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(workplace)) query=query.Where(x=>x.Workplace==workplace);
         if (!string.IsNullOrWhiteSpace(department)) query=query.Where(x=>x.Department==department||x.ParentDepartment==department);
