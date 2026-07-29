@@ -145,9 +145,11 @@ html[data-theme="dark"] .detail-column-value { fill:#c2cedc; }
 .salary-band-label { font-weight:750; }
 .salary-band-whisker { stroke:#4c8af7; stroke-width:1.5; }
 .salary-band-box { fill:#dce9ff; stroke:#fff; stroke-width:2; paint-order:stroke fill; transition:filter .16s ease,transform .16s ease; transform-box:fill-box; transform-origin:center; }
-.salary-band-group:hover .salary-band-box,.salary-band-group:focus .salary-band-box { filter:brightness(.97) saturate(1.15); transform:scale(1.05); }
+.salary-band-group { opacity:0; outline:none; cursor:default; pointer-events:bounding-box; transform-box:fill-box; transform-origin:center bottom; animation:salary-band-enter .48s cubic-bezier(.2,.75,.25,1) forwards; }
+.salary-band-group:hover .salary-band-box { filter:brightness(.97) saturate(1.15); transform:scale(1.05); }
 .salary-band-median { stroke:#3978f6; stroke-width:2; }
 .salary-band-median-diamond { fill:#ee6b78; stroke:white; stroke-width:.8; }
+@keyframes salary-band-enter { from { opacity:0; transform:translateY(12px) scaleY(.86); } to { opacity:1; transform:translateY(0) scaleY(1); } }
 .salary-band-empty { fill:#a4b1c0; font-size:12px; }
 html[data-theme="dark"] .salary-detail-switch button { color:#c2cedc; border-color:#34475f; background:var(--field); }
 html[data-theme="dark"] .salary-band-grid { stroke:#2b3d52; }
@@ -156,6 +158,16 @@ html[data-theme="dark"] .salary-band-tick,
 html[data-theme="dark"] .salary-band-label,
 html[data-theme="dark"] .salary-band-unit { fill:#aebdce; }
 html[data-theme="dark"] .salary-band-box { fill:#24466f; stroke:#fff; }
+.salary-band-tooltip { position:absolute; z-index:1200; min-width:148px; padding:11px 13px; border:1px solid #c9d6e5; border-radius:8px; color:#34475d; background:rgba(255,255,255,.98); box-shadow:0 9px 25px rgba(18,43,74,.22); font-size:11px; pointer-events:none; }
+.salary-band-tooltip strong { display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:8px; color:#25394f; font-size:12px; }
+.salary-band-tooltip strong small { color:#7a899b; font-size:9px; font-weight:700; }
+.salary-band-tooltip div { display:flex; justify-content:space-between; gap:20px; margin-top:5px; }
+.salary-band-tooltip span { color:#758599; }
+.salary-band-tooltip b { color:#34475d; font-weight:800; }
+html[data-theme="dark"] .salary-band-tooltip { color:#dce6f2; border-color:#3a4c63; background:rgba(23,36,53,.98); box-shadow:0 9px 25px rgba(0,0,0,.34); }
+html[data-theme="dark"] .salary-band-tooltip strong,html[data-theme="dark"] .salary-band-tooltip b { color:#e7eef7; }
+html[data-theme="dark"] .salary-band-tooltip span,html[data-theme="dark"] .salary-band-tooltip strong small { color:#9fb0c4; }
+@media(prefers-reduced-motion:reduce){.salary-band-group{opacity:1;animation:none}}
 @media(max-width:620px){.detail-dialog{height:calc(100vh - 20px);padding:18px}.salary-detail-switch button{width:32px;height:40px}.salary-detail-switch:not([hidden]) + .detail-chart{padding-right:38px;padding-left:38px}}
 
 .grid { display: grid; grid-template-columns: 1.3fr .8fr 1fr; grid-template-rows: repeat(2, minmax(145px, auto)); gap: 16px; margin-bottom: 16px; }
@@ -218,8 +230,9 @@ html[data-theme="dark"] .salary-band-box { fill:#24466f; stroke:#fff; }
 .density-grid { stroke: #e8eef5; stroke-width: 1; stroke-dasharray: 2 3; }
 .density-label, .density-tick { fill: #7b8a9c; font-size: 8px; }
 .density-label { font-weight: 700; }
-.density-point { fill: #35b7ca; fill-opacity: .58; stroke: #238ea1; stroke-width: .45; transition: r .12s, fill-opacity .12s; }
+.density-point { fill: #35b7ca; fill-opacity: .58; stroke: #238ea1; stroke-width: .45; opacity:0; transform-box:fill-box; transform-origin:center; animation:density-point-enter .42s cubic-bezier(.2,.8,.25,1) var(--point-delay,0ms) both; transition: r .12s, fill-opacity .12s; }
 .density-point:hover { r: 4px; fill-opacity: 1; }
+@keyframes density-point-enter { from { opacity:0; transform:scale(.2); } to { opacity:1; transform:scale(1); } }
 .legend { display: flex; justify-content: center; gap: 22px; margin-top: 16px; color: #617287; font-size: 11px; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; }
 .dot-male { background: var(--blue); }
@@ -232,7 +245,7 @@ html[data-theme="dark"] .salary-band-box { fill:#24466f; stroke:#fff; }
 .hist-label { height: 18px; color: #8391a1; font-size: 9px; white-space: nowrap; }
 @keyframes rise { from { height: 0 !important; } }
 @keyframes donut-enter { from { opacity: 0; transform: scale(.55) rotate(-35deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
-@media (prefers-reduced-motion: reduce) { .donut, .bar-fill, .department-bar-fill, .hist-bar, .wage-bar { animation: none !important; } .position-segment { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .donut, .bar-fill, .department-bar-fill, .hist-bar, .wage-bar, .density-point { animation: none !important; } .density-point { opacity:1; } .position-segment { transition: none; } }
 
 .table-card { overflow: hidden; }
 .table-head { display: flex; justify-content: space-between; align-items: center; padding: 19px 21px; border-bottom: 1px solid var(--line); }

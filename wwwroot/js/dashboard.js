@@ -39,7 +39,7 @@ function ageTenureScatter(points){
   target.innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="직원별 연령과 근속연수 산점도">
     ${xTicks.map(value=>`<line class="density-grid" x1="${xScale(value)}" y1="${top}" x2="${xScale(value)}" y2="${top+plotHeight}"></line><text class="density-tick" x="${xScale(value)}" y="${height-16}" text-anchor="middle">${Math.round(value)}</text>`).join('')}
     ${yTicks.map(value=>`<line class="density-grid" x1="${left}" y1="${yScale(value)}" x2="${width-right}" y2="${yScale(value)}"></line><text class="density-tick" x="${left-6}" y="${yScale(value)+3}" text-anchor="end">${Math.round(value)}</text>`).join('')}
-    ${points.map(point=>`<circle class="density-point" cx="${xScale(point.age).toFixed(2)}" cy="${yScale(point.tenure).toFixed(2)}" r="2.35"><title>연령 ${point.age.toFixed(1)}세 · 근속 ${point.tenure.toFixed(1)}년</title></circle>`).join('')}
+    ${points.map((point,index)=>`<circle class="density-point" style="--point-delay:${Math.min(index*12,420)}ms" cx="${xScale(point.age).toFixed(2)}" cy="${yScale(point.tenure).toFixed(2)}" r="2.35"><title>연령 ${point.age.toFixed(1)}세 · 근속 ${point.tenure.toFixed(1)}년</title></circle>`).join('')}
     <line class="density-axis" x1="${left}" y1="${top+plotHeight}" x2="${width-right}" y2="${top+plotHeight}"></line><line class="density-axis" x1="${left}" y1="${top}" x2="${left}" y2="${top+plotHeight}"></line>
     <text class="density-label" x="${left+plotWidth/2}" y="${height-2}" text-anchor="middle">연령(세)</text>
     <text class="density-label" x="9" y="${top+plotHeight/2}" text-anchor="middle" transform="rotate(-90 9 ${top+plotHeight/2})">근속연수(년)</text>
@@ -67,6 +67,7 @@ function detailVerticalBars(rows){$('detailChart').classList.remove('salary-band
 let salaryDetailIndex=0;
 function renderSalaryDetail(){
   const bandView=salaryDetailIndex===1;
+  $('salaryBandTooltip').hidden=true;
   $('salaryDetailDots').setAttribute('aria-label',`연봉 그래프 ${salaryDetailIndex+1}/2`);
   $('salaryDetailDots').querySelectorAll('i').forEach((dot,index)=>dot.classList.toggle('active',index===salaryDetailIndex));
   $('detailTitle').textContent=bandView?'직위별 연봉 밴드':'연봉 구간별 인원';
@@ -94,10 +95,24 @@ function salaryPositionBandChart(rows){
     const center=left+groupWidth*(index+.5),label=`${item.label}${item.count?` (${item.count}명)`:''}`;
     if(!item.count)return `<g class="salary-band-group"><text class="salary-band-empty" x="${center}" y="${baseline-8}" text-anchor="middle">-</text><text class="salary-band-label" x="${center}" y="${baseline+28}" text-anchor="middle">${esc(item.label)}</text></g>`;
     const boxTop=y(item.q3),boxBottom=y(item.q1),boxHeight=Math.max(3,boxBottom-boxTop),medianY=y(item.median),diamond=`${center},${medianY-5} ${center+5},${medianY} ${center},${medianY+5} ${center-5},${medianY}`;
-    const summary=`${item.label} ${item.count}명 · 최소 ${fmt.format(item.min)}만원 · 중앙 ${fmt.format(item.median)}만원 · 최대 ${fmt.format(item.max)}만원`;
-    return `<g class="salary-band-group" tabindex="0" role="img" aria-label="${esc(summary)}"><title>${esc(summary)}</title><line class="salary-band-whisker" x1="${center}" y1="${y(item.max)}" x2="${center}" y2="${y(item.min)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.max)}" x2="${center+boxWidth*.28}" y2="${y(item.max)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.min)}" x2="${center+boxWidth*.28}" y2="${y(item.min)}"></line><rect class="salary-band-box" x="${center-boxWidth/2}" y="${boxTop}" width="${boxWidth}" height="${boxHeight}" rx="3"></rect><line class="salary-band-median" x1="${center-boxWidth/2}" y1="${y(item.median)}" x2="${center+boxWidth/2}" y2="${y(item.median)}"></line><polygon class="salary-band-median-diamond" points="${diamond}"></polygon><text class="salary-band-label" x="${center}" y="${baseline+28}" text-anchor="middle">${esc(label)}</text></g>`;
+    const summary=`${item.label} ${item.count}명 · 최소 ${fmt.format(item.min)}만원 · Q1 ${fmt.format(item.q1)}만원 · 중앙 ${fmt.format(item.median)}만원 · Q3 ${fmt.format(item.q3)}만원 · 최대 ${fmt.format(item.max)}만원`;
+    return `<g class="salary-band-group" style="animation-delay:${index*70}ms" role="img" aria-label="${esc(summary)}" data-label="${esc(item.label)}" data-count="${item.count}" data-min="${item.min}" data-q1="${item.q1}" data-median="${item.median}" data-q3="${item.q3}" data-max="${item.max}"><line class="salary-band-whisker" x1="${center}" y1="${y(item.max)}" x2="${center}" y2="${y(item.min)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.max)}" x2="${center+boxWidth*.28}" y2="${y(item.max)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.min)}" x2="${center+boxWidth*.28}" y2="${y(item.min)}"></line><rect class="salary-band-box" x="${center-boxWidth/2}" y="${boxTop}" width="${boxWidth}" height="${boxHeight}" rx="3"></rect><line class="salary-band-median" x1="${center-boxWidth/2}" y1="${y(item.median)}" x2="${center+boxWidth/2}" y2="${y(item.median)}"></line><polygon class="salary-band-median-diamond" points="${diamond}"></polygon><text class="salary-band-label" x="${center}" y="${baseline+28}" text-anchor="middle">${esc(label)}</text></g>`;
   }).join('');
   $('detailChart').innerHTML=`<svg class="salary-band-svg" style="min-width:${width}px" viewBox="0 0 ${width} ${height}" role="img" aria-label="직위별 연봉 밴드 그래프"><text class="salary-band-unit" x="${left}" y="14">연봉(만원)</text>${ticks.map(value=>`<line class="salary-band-grid" x1="${left}" y1="${y(value)}" x2="${width-right}" y2="${y(value)}"></line><text class="salary-band-tick" x="${left-9}" y="${y(value)+4}" text-anchor="end">${fmt.format(Math.round(value))}</text>`).join('')}<line class="salary-band-axis" x1="${left}" y1="${baseline}" x2="${width-right}" y2="${baseline}"></line>${groups}</svg>`;
+  bindSalaryBandTooltip();
+}
+function bindSalaryBandTooltip(){
+  const tooltip=$('salaryBandTooltip');
+  $('detailChart').querySelectorAll('.salary-band-group[data-label]').forEach(group=>{
+    group.onpointerenter=group.onpointermove=event=>{
+      const rows=[['최소',group.dataset.min],['Q1',group.dataset.q1],['중앙',group.dataset.median],['Q3',group.dataset.q3],['최대',group.dataset.max]];
+      tooltip.innerHTML=`<strong>${esc(group.dataset.label)} <small>${group.dataset.count}명</small></strong>${rows.map(([label,value])=>`<div><span>${label}</span><b>${fmt.format(Number(value))}만원</b></div>`).join('')}`;
+      tooltip.hidden=false;const gap=14,tw=tooltip.offsetWidth,th=tooltip.offsetHeight,shell=tooltip.parentElement,rect=shell.getBoundingClientRect();
+      tooltip.style.left=`${Math.max(8,Math.min(rect.width-tw-8,event.clientX-rect.left+gap))}px`;
+      tooltip.style.top=`${Math.max(8,Math.min(rect.height-th-8,event.clientY-rect.top+gap))}px`;
+    };
+    group.onpointerleave=()=>tooltip.hidden=true;
+  });
 }
 let headcountRequestId=0;
 async function loadHeadcountTrend(mode){const requestId=++headcountRequestId;document.querySelectorAll('#headcountPeriodToggle button').forEach(button=>{const active=button.dataset.mode===mode;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});$('detailDescription').textContent=mode==='monthly'?'최근 12개월 · 월말 DB가 없으면 해당 월의 마지막 DB를 기준으로 표시합니다.':'최근 15일 · 해당 날짜의 DB가 없으면 0명으로 표시합니다.';$('detailChart').setAttribute('aria-busy','true');$('detailChart').innerHTML='<div class="chart-empty">인원 추이를 불러오는 중입니다.</div>';try{const r=await fetch(`/api/employees/headcount-trend?mode=${mode}`);if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);const data=await r.json();if(requestId!==headcountRequestId)return;detailVerticalBars(data.items);}catch(e){if(requestId===headcountRequestId)$('detailChart').innerHTML=`<div class="chart-empty">${esc(e.message)}</div>`;}finally{if(requestId===headcountRequestId)$('detailChart').removeAttribute('aria-busy');}}
@@ -105,5 +120,5 @@ function openDetail(type){if(!detailData)return;if(type==='salary'&&!canViewSala
 $('salaryDetailPrev').onclick=()=>changeSalaryDetail(-1);
 $('salaryDetailNext').onclick=()=>changeSalaryDetail(1);
 document.querySelectorAll('#headcountPeriodToggle button').forEach(button=>button.onclick=()=>loadHeadcountTrend(button.dataset.mode));
-document.querySelectorAll('.kpi-clickable').forEach(card=>{card.onclick=()=>openDetail(card.dataset.detail);card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openDetail(card.dataset.detail);}};});$('closeDetailBtn').onclick=()=>$('detailDialog').close();$('detailDialog').onclick=e=>{if(e.target===$('detailDialog'))$('detailDialog').close();};
+document.querySelectorAll('.kpi-clickable').forEach(card=>{card.onclick=()=>openDetail(card.dataset.detail);card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openDetail(card.dataset.detail);}};});$('closeDetailBtn').onclick=()=>{$('salaryBandTooltip').hidden=true;$('detailDialog').close();};$('detailDialog').onclick=e=>{if(e.target===$('detailDialog')){$('salaryBandTooltip').hidden=true;$('detailDialog').close();}};
 $('employeeDateFilter').onchange=async()=>{initialized=false;['workplaceFilter','deptFilter','positionFilter'].forEach(id=>$(id).options.length=1);$('searchInput').value='';$('importStatus').textContent='';page=1;await load();};
