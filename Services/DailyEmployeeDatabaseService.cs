@@ -8,10 +8,12 @@ namespace HRDashboard.Services;
 public sealed record HeadcountTrendItem(string Label,int Value,DateTime TargetDate,DateTime? BasisDate);
 public sealed record HeadcountTrendResponse(string Mode,DateTime EndDate,IReadOnlyList<HeadcountTrendItem> Items);
 public sealed record EmployeeDatabaseCleanupResult(DateTime DatabaseDate,string FileName,bool Deleted,string? Error);
+public sealed record EmployeeDatabaseCopyResult(DateTime SourceDate,DateTime DatabaseDate,string FileName);
 
 public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment,IHttpContextAccessor httpContextAccessor)
 {
     private readonly object storageLock=new();
+    private readonly SemaphoreSlim copyLock=new(1,1);
 
     public DateTime SelectedDate
     {
@@ -49,6 +51,73 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
         return null;
     }
 
+    public async Task<IReadOnlyList<EmployeeDatabaseCopyResult>> CreateMissingDatabasesThroughAsync(DateTime throughDate,CancellationToken ct)
+    {
+        await copyLock.WaitAsync(ct);
+        try
+        {
+            var targetDate=throughDate.Date;
+            var databases=AvailableDatabasePaths();
+            var source=default(KeyValuePair<DateTime,string>);
+            foreach(var candidate in databases.Where(x=>x.Key<=targetDate).OrderByDescending(x=>x.Key))
+            {
+                if(!await DatabaseHasEmployeesTableAsync(candidate.Value,ct))continue;
+                source=candidate;
+                break;
+            }
+            if(source.Key==default)return Array.Empty<EmployeeDatabaseCopyResult>();
+
+            var results=new List<EmployeeDatabaseCopyResult>();
+            for(var date=source.Key.AddDays(1);date<=targetDate;date=date.AddDays(1))
+            {
+                ct.ThrowIfCancellationRequested();
+                var destinationPath=PathFor(date);
+                if(File.Exists(destinationPath))
+                {
+                    if(await DatabaseHasEmployeesTableAsync(destinationPath,ct))
+                        source=new KeyValuePair<DateTime,string>(date,destinationPath);
+                    continue;
+                }
+
+                await CopyDatabaseAsync(source.Value,destinationPath,source.Key,date,ct);
+                results.Add(new EmployeeDatabaseCopyResult(source.Key,date,Path.GetFileName(destinationPath)));
+                source=new KeyValuePair<DateTime,string>(date,destinationPath);
+            }
+            return results;
+        }
+        finally
+        {
+            copyLock.Release();
+        }
+    }
+
+    public async Task<bool> IsAutomaticallyUpdatedAsync(DateTime date,CancellationToken ct)
+    {
+        var path=PathFor(date);
+        if(!File.Exists(path))return false;
+        try
+        {
+            await using var connection=new SqliteConnection($"Data Source={path};Mode=ReadOnly");
+            await connection.OpenAsync(ct);
+            await using var command=connection.CreateCommand();
+            command.CommandText="""
+                SELECT 1
+                FROM sqlite_master
+                WHERE type='table' AND name='EmployeeDatabaseMetadata'
+                  AND EXISTS (
+                    SELECT 1 FROM EmployeeDatabaseMetadata
+                    WHERE Key='UpdateType' AND Value='Automatic'
+                  )
+                LIMIT 1
+                """;
+            return await command.ExecuteScalarAsync(ct)!=null;
+        }
+        catch(SqliteException)
+        {
+            return false;
+        }
+    }
+
     private static async Task<bool> DatabaseHasEmployeesTableAsync(string path,CancellationToken ct)
     {
         if(!File.Exists(path)) return false;
@@ -63,6 +132,69 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
         catch(SqliteException)
         {
             return false;
+        }
+    }
+
+    private static async Task CopyDatabaseAsync(string sourcePath,string destinationPath,DateTime sourceDate,DateTime targetDate,CancellationToken ct)
+    {
+        var temporaryPath=destinationPath+$".tmp-{Guid.NewGuid():N}";
+        try
+        {
+            await using(var source=new SqliteConnection($"Data Source={sourcePath};Mode=ReadOnly"))
+            await using(var destination=new SqliteConnection($"Data Source={temporaryPath}"))
+            {
+                await source.OpenAsync(ct);
+                await destination.OpenAsync(ct);
+                source.BackupDatabase(destination);
+
+                await using(var stateSchema=destination.CreateCommand())
+                {
+                    stateSchema.CommandText="SELECT name FROM pragma_table_info('EmployeeDataState')";
+                    var columns=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    await using var reader=await stateSchema.ExecuteReaderAsync(ct);
+                    while(await reader.ReadAsync(ct))columns.Add(reader.GetString(0));
+                    await reader.CloseAsync();
+
+                    await using var ensureState=destination.CreateCommand();
+                    if(columns.Count==0)
+                        ensureState.CommandText="""
+                            CREATE TABLE EmployeeDataState (
+                                Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                                UpdatedDate TEXT NOT NULL,
+                                LastModifiedAt TEXT NULL
+                            )
+                            """;
+                    else if(!columns.Contains("LastModifiedAt"))
+                        ensureState.CommandText="ALTER TABLE EmployeeDataState ADD COLUMN LastModifiedAt TEXT NULL";
+                    if(ensureState.CommandText.Length>0)await ensureState.ExecuteNonQueryAsync(ct);
+                }
+
+                await using var metadata=destination.CreateCommand();
+                metadata.CommandText="""
+                    CREATE TABLE IF NOT EXISTS EmployeeDatabaseMetadata (
+                        Key TEXT NOT NULL PRIMARY KEY,
+                        Value TEXT NOT NULL
+                    );
+                    INSERT OR REPLACE INTO EmployeeDatabaseMetadata (Key,Value) VALUES ('UpdateType','Automatic');
+                    INSERT OR REPLACE INTO EmployeeDatabaseMetadata (Key,Value) VALUES ('SourceDate',$sourceDate);
+                    INSERT OR REPLACE INTO EmployeeDatabaseMetadata (Key,Value) VALUES ('UpdatedAtUtc',$updatedAtUtc);
+                    INSERT OR IGNORE INTO EmployeeDataState (Id,UpdatedDate,LastModifiedAt)
+                    VALUES (1,$targetDate,NULL);
+                    UPDATE EmployeeDataState
+                    SET UpdatedDate=$targetDate, LastModifiedAt=NULL
+                    WHERE Id=1;
+                    """;
+                metadata.Parameters.AddWithValue("$sourceDate",sourceDate.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture));
+                metadata.Parameters.AddWithValue("$targetDate",targetDate.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture));
+                metadata.Parameters.AddWithValue("$updatedAtUtc",DateTimeOffset.UtcNow.ToString("O",CultureInfo.InvariantCulture));
+                await metadata.ExecuteNonQueryAsync(ct);
+                await destination.CloseAsync();
+            }
+            File.Move(temporaryPath,destinationPath);
+        }
+        finally
+        {
+            if(File.Exists(temporaryPath))File.Delete(temporaryPath);
         }
     }
 
