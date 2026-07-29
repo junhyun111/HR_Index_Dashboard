@@ -107,6 +107,7 @@ var commonSettingsConnectionString = builder.Configuration.GetConnectionString("
     ?? throw new InvalidOperationException("공통 설정 SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<CommonSettingsDbContext>(options => options.UseSqlite(commonSettingsConnectionString));
 builder.Services.AddScoped<EmployeeColumnSettingsService>();
+builder.Services.AddScoped<SalaryPositionAxisSettingsService>();
 builder.Services.AddScoped<UserAccountService>();
 builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
@@ -245,6 +246,8 @@ await using (var scope = app.Services.CreateAsyncScope())
         """);
     var settings=scope.ServiceProvider.GetRequiredService<EmployeeColumnSettingsService>();
     await settings.EnsureSeededAsync();
+    var salaryPositions=scope.ServiceProvider.GetRequiredService<SalaryPositionAxisSettingsService>();
+    await salaryPositions.GetAsync();
     var accounts=scope.ServiceProvider.GetRequiredService<UserAccountService>();
     await accounts.EnsureAdministratorAsync();
 }

@@ -6,6 +6,7 @@ namespace HRDashboard.Data;
 public sealed class CommonSettingsDbContext(DbContextOptions<CommonSettingsDbContext> options) : DbContext(options)
 {
     public DbSet<EmployeeColumnSetting> EmployeeColumnSettings => Set<EmployeeColumnSetting>();
+    public DbSet<SalaryPositionAxisSetting> SalaryPositionAxisSettings => Set<SalaryPositionAxisSetting>();
     public DbSet<ApplicationUser> Users => Set<ApplicationUser>();
     public DbSet<EmployeeDatabaseChange> EmployeeDatabaseChanges => Set<EmployeeDatabaseChange>();
 
@@ -18,6 +19,13 @@ public sealed class CommonSettingsDbContext(DbContextOptions<CommonSettingsDbCon
             entity.Property(x=>x.ColumnKey).HasMaxLength(50);
             entity.Property(x=>x.DisplayName).HasMaxLength(50).IsRequired();
             entity.HasIndex(x=>x.DisplayName).IsUnique();
+        });
+        modelBuilder.Entity<SalaryPositionAxisSetting>(entity =>
+        {
+            entity.ToTable("SalaryPositionAxisSettings");
+            entity.HasKey(x=>x.Id);
+            entity.Property(x=>x.PositionName).HasMaxLength(50).IsRequired();
+            entity.HasIndex(x=>x.PositionName).IsUnique();
         });
         modelBuilder.Entity<ApplicationUser>(entity =>
         {

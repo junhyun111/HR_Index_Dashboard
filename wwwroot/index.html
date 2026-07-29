@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>INNODEP HR Index</title><script src="./js/theme.js?v=20260727-settings1"></script><link rel="stylesheet" href="./css/style.css?v=20260729-annual-salary1">
+  <title>INNODEP HR Index</title><script src="./js/theme.js?v=20260727-settings1"></script><link rel="stylesheet" href="./css/style.css?v=20260729-salary-band-tooltip1">
 </head>
 <body><div class="shell">
   <aside class="sidebar">
@@ -52,5 +52,5 @@
   <p class="paste-guide">Excel 표를 머리글과 함께 붙여넣으세요. <strong>사번만 필수</strong>이며, 사번이 같으면 입력된 값만 업데이트되고 기존 값은 유지됩니다.</p>
   <textarea id="pasteArea" spellcheck="false" placeholder="사업장    상위부서    부서    사번    성명    직위    근무조    직책    직군    사원구분    성별    최종학력    전공    생년월일    입사일자    퇴사일자    연봉"></textarea><p class="paste-summary" id="pasteSummary">붙여넣은 데이터가 없습니다.</p>
   <div class="paste-dialog-actions"><button class="data-button" id="cancelPasteBtn" type="button">취소</button><button class="data-button data-button-primary" type="submit" id="applyPasteBtn" disabled>DB에 반영</button></div></form></dialog>
-<dialog class="detail-dialog" id="detailDialog"><div class="detail-dialog-head"><div><span class="dialog-kicker">HR DETAIL</span><h2 id="detailTitle"></h2><p id="detailDescription"></p></div><button class="dialog-close" id="closeDetailBtn" type="button" aria-label="닫기">×</button></div><div class="detail-period-toggle" id="headcountPeriodToggle" aria-label="조회 기간 단위" hidden><button class="active" type="button" data-mode="monthly" aria-pressed="true"><span>월별</span><small>최근 12개월</small></button><button type="button" data-mode="daily" aria-pressed="false"><span>일별</span><small>최근 15일</small></button></div><div class="detail-chart" id="detailChart"></div></dialog>
-<script src="./js/dashboard.js?v=20260729-annual-salary1"></script></body></html>
+<dialog class="detail-dialog" id="detailDialog"><div class="detail-dialog-head"><div><span class="dialog-kicker">HR DETAIL</span><h2 id="detailTitle"></h2><p id="detailDescription"></p></div><button class="dialog-close" id="closeDetailBtn" type="button" aria-label="닫기">×</button></div><div class="detail-period-toggle" id="headcountPeriodToggle" aria-label="조회 기간 단위" hidden><button class="active" type="button" data-mode="monthly" aria-pressed="true"><span>월별</span><small>최근 12개월</small></button><button type="button" data-mode="daily" aria-pressed="false"><span>일별</span><small>최근 15일</small></button></div><div class="detail-chart-shell"><div class="salary-detail-switch" id="salaryDetailSwitch" hidden><button class="salary-detail-prev" id="salaryDetailPrev" type="button" aria-label="이전 연봉 그래프">‹</button><span class="salary-detail-dots" id="salaryDetailDots" aria-label="연봉 그래프 1/2"><i class="active"></i><i></i></span><button class="salary-detail-next" id="salaryDetailNext" type="button" aria-label="다음 연봉 그래프">›</button></div><div class="detail-chart" id="detailChart"></div></div></dialog>
+<script src="./js/dashboard.js?v=20260729-salary-band-tooltip1"></script></body></html>

@@ -170,13 +170,15 @@ public static class DashboardEndpoints
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
-        string? sort, string? direction, int page, int pageSize, HttpContext context, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
+        string? sort, string? direction, int page, int pageSize, HttpContext context, AppDbContext db,
+        DailyEmployeeDatabaseService databases,SalaryPositionAxisSettingsService salaryPositionSettings,CancellationToken ct)
     {
         var canViewSalary=context.User.IsInRole("Administrator")||context.User.IsInRole("HrAdministrator");
         if(!canViewSalary&&sort=="annualSalary")sort=null;
         page=Math.Max(1,page); pageSize=Math.Clamp(pageSize==0?10:pageSize,1,100);
+        var salaryPositionAxes=await salaryPositionSettings.GetAsync(ct);
         // 조회만으로 빈 날짜 DB를 만들지 않는다. 기존에 남아 있는 빈 파일도 빈 화면으로 처리한다.
-        if(!await databases.SelectedDatabaseHasEmployeesTableAsync(ct)) return EmptyDashboard(databases.SelectedDate,page,pageSize);
+        if(!await databases.SelectedDatabaseHasEmployeesTableAsync(ct)) return EmptyDashboard(databases.SelectedDate,page,pageSize,salaryPositionAxes);
         await databases.MigrateExistingDatabaseAsync(db,ct);
         var totalCount=await db.Employees.CountAsync(ct); var query=db.Employees.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(workplace)) query=query.Where(x=>x.Workplace==workplace);
@@ -192,6 +194,7 @@ public static class DashboardEndpoints
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         var averageAnnualSalary=canViewSalary?AverageAnnualSalary(rows):null;
         var annualSalaryGroups=canViewSalary?AnnualSalaryGroups(rows):Array.Empty<CountResponse>();
+        var salaryPositionBands=canViewSalary?SalaryPositionBands(rows,salaryPositionAxes):Array.Empty<SalaryPositionBand>();
         var departments=rows
             .Where(x=>!string.IsNullOrWhiteSpace(x.Department))
             .GroupBy(x=>x.Department!)
@@ -216,6 +219,7 @@ public static class DashboardEndpoints
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,referenceDate),
             annualSalaryGroups,
+            salaryPositionBands,
             ageGroups=AgeGroups(rows,referenceDate),
             ageTenurePoints=AgeTenurePoints(rows,referenceDate),
             monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),referenceDate.Year,null,referenceDate),
@@ -239,14 +243,16 @@ public static class DashboardEndpoints
             :null;
     }
 
-    private static IResult EmptyDashboard(DateTime dataAsOf,int page,int pageSize)
+    private static IResult EmptyDashboard(DateTime dataAsOf,int page,int pageSize,IReadOnlyList<SalaryPositionAxisResponse> salaryPositionAxes)
     {
         var months=Enumerable.Range(1,12).Select(month=>new CountResponse($"{month}월",0)).ToArray();
         return Results.Ok(new {
             filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>() },
             summary=new { totalCount=0,filteredCount=0,dataAsOf,lastModifiedAt=(DateTimeOffset?)null,isAutomaticallyUpdated=false,averageAge=(double?)null,averageAnnualSalary=(long?)null,averageTenure=(double?)null,hiresThisYear=0,terminationsThisYear=0 },
             departments=Array.Empty<DepartmentCountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
-            tenureGroups=Array.Empty<CountResponse>(),annualSalaryGroups=Array.Empty<CountResponse>(),ageGroups=Array.Empty<CountResponse>(),ageTenurePoints=Array.Empty<AgeTenurePoint>(),
+            tenureGroups=Array.Empty<CountResponse>(),annualSalaryGroups=Array.Empty<CountResponse>(),
+            salaryPositionBands=SalaryPositionBands([],salaryPositionAxes),
+            ageGroups=Array.Empty<CountResponse>(),ageTenurePoints=Array.Empty<AgeTenurePoint>(),
             monthlyHires=months,monthlyTerminations=months,employees=Array.Empty<Employee>(),
             pagination=new {page,pageSize,pages=1,totalCount=0}
         });
@@ -328,6 +334,28 @@ public static class DashboardEndpoints
         return labels.Select((label,i)=>new CountResponse(label,counts[i])).ToArray();
     }
 
+    private static SalaryPositionBand[] SalaryPositionBands(IEnumerable<Employee> rows,IReadOnlyList<SalaryPositionAxisResponse> axes)
+    {
+        var employees=rows.Where(x=>x.AnnualSalary!=null&&!string.IsNullOrWhiteSpace(x.Position)).ToArray();
+        return axes.Select(axis=>{
+            var values=employees
+                .Where(x=>string.Equals(x.Position,axis.PositionName,StringComparison.OrdinalIgnoreCase))
+                .Select(x=>x.AnnualSalary!.Value/10000d)
+                .Order()
+                .ToArray();
+            if(values.Length==0)return new SalaryPositionBand(axis.PositionName,0,null,null,null,null,null,null);
+            double Q(double percentile)
+            {
+                var index=(values.Length-1)*percentile;
+                var lower=(int)Math.Floor(index);
+                var upper=(int)Math.Ceiling(index);
+                return values[lower]+(values[upper]-values[lower])*(index-lower);
+            }
+            double R(double value)=>Math.Round(value,1);
+            return new SalaryPositionBand(axis.PositionName,values.Length,R(values[0]),R(Q(.25)),R(Q(.5)),R(Q(.75)),R(values[^1]),R(values.Average()));
+        }).ToArray();
+    }
+
     private static async Task<string[]> Values(IQueryable<string?> q,CancellationToken ct)=>await q.Where(x=>x!=null&&x!="").Select(x=>x!).Distinct().Order().ToArrayAsync(ct);
     private static List<Employee> Sort(List<Employee> rows,string? sort)
     {
@@ -362,6 +390,7 @@ public static class DashboardEndpoints
     }
     private sealed record CountResponse(string Label,int Value);
     private sealed record DepartmentCountResponse(string Label,int Value,IReadOnlyList<CountResponse> Positions);
+    private sealed record SalaryPositionBand(string Label,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max,double? Average);
     private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,string? Education,string? Major,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? AnnualSalary);

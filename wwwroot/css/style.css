@@ -80,7 +80,8 @@ select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px r
 .kpi-clickable:hover { transform: translateY(-2px); border-color: #b9d0fb; box-shadow: 0 14px 34px rgba(24,59,104,.14); }
 .kpi-clickable:focus-visible { outline: 3px solid rgba(57,120,246,.22); outline-offset: 2px; }
 
-.detail-dialog { width: min(720px, calc(100vw - 32px)); padding: 24px; border: 0; border-radius: 16px; color: var(--ink); box-shadow: 0 24px 80px rgba(15,38,70,.28); }
+.detail-dialog { width: min(720px, calc(100vw - 32px)); height:min(600px,calc(100vh - 32px)); box-sizing:border-box; padding:24px; border:0; border-radius:16px; color:var(--ink); box-shadow:0 24px 80px rgba(15,38,70,.28); }
+.detail-dialog[open] { display:flex; flex-direction:column; }
 .detail-dialog::backdrop { background: rgba(12,30,53,.5); backdrop-filter: blur(2px); }
 .detail-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .detail-dialog-head h2 { margin: 4px 0 0; font-size: 21px; }
@@ -97,7 +98,21 @@ html[data-theme="dark"] .detail-period-toggle { border-color:#31445c; background
 html[data-theme="dark"] .detail-period-toggle button { color:#9badc2; }
 html[data-theme="dark"] .detail-period-toggle button:hover:not(.active) { color:#d8e3ef; background:rgba(255,255,255,.05); }
 html[data-theme="dark"] .detail-period-toggle button.active { color:white; background:linear-gradient(135deg,#3f7ff9,#3168d7); }
-.detail-chart { min-height: 290px; max-height: 58vh; overflow-y: auto; padding: 25px 8px 8px; }
+.detail-chart-shell { position:relative; flex:1; min-height:0; overflow:hidden; }
+.salary-detail-switch { position:absolute; z-index:5; inset:0; pointer-events:none; }
+.salary-detail-switch[hidden] { display:none; }
+.salary-detail-switch button { position:absolute; top:50%; width:38px; height:44px; padding:0; border:1px solid var(--line); border-radius:11px; color:#52657a; background:var(--field,#fff); box-shadow:0 5px 16px rgba(24,59,104,.1); font-size:25px; line-height:1; cursor:pointer; pointer-events:auto; transform:translateY(-50%); transition:border-color .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease; }
+.salary-detail-prev { left:0; }
+.salary-detail-next { right:0; }
+.salary-detail-switch button:hover { color:var(--blue); border-color:#a9c4fa; transform:translateY(-1px); box-shadow:0 4px 11px rgba(57,120,246,.12); }
+.salary-detail-switch button:hover { transform:translateY(calc(-50% - 2px)); }
+.salary-detail-switch button:focus-visible { outline:3px solid rgba(57,120,246,.2); outline-offset:1px; }
+.salary-detail-dots { position:absolute; z-index:2; left:50%; bottom:5px; display:flex; align-items:center; justify-content:center; gap:7px; transform:translateX(-50%); }
+.salary-detail-dots i { width:7px; height:7px; border-radius:50%; background:#aebaca; box-shadow:0 0 0 3px transparent; transition:width .2s ease,background .2s ease,box-shadow .2s ease; }
+.salary-detail-dots i.active { width:18px; border-radius:5px; background:var(--blue); box-shadow:0 0 0 3px rgba(57,120,246,.11); }
+.salary-detail-switch:not([hidden]) + .detail-chart { padding-right:50px; padding-left:50px; padding-bottom:30px; }
+.detail-chart { width:100%; height:100%; box-sizing:border-box; min-height:0; max-height:none; overflow:auto; padding:25px 8px 8px; }
+.detail-chart.is-transitioning { pointer-events:none; }
 .detail-horizontal-svg { display:block; width:100%; min-width:520px; height:auto; }
 .detail-svg-label { fill:#52657a; font-size:12px; dominant-baseline:middle; }
 .detail-svg-value { fill:#52657a; font-size:11px; font-weight:700; dominant-baseline:middle; }
@@ -123,6 +138,25 @@ html[data-theme="dark"] .detail-svg-track { fill:#26384d; }
 html[data-theme="dark"] .detail-axis { stroke:#34475f; }
 html[data-theme="dark"] .detail-column-label,
 html[data-theme="dark"] .detail-column-value { fill:#c2cedc; }
+.salary-band-svg { display:block; width:100%; min-width:520px; height:auto; overflow:visible; }
+.salary-band-grid { stroke:#e6edf5; stroke-width:1; }
+.salary-band-axis { stroke:#ccd7e4; stroke-width:1; }
+.salary-band-tick,.salary-band-label,.salary-band-unit { fill:#718196; font-size:10px; }
+.salary-band-label { font-weight:750; }
+.salary-band-whisker { stroke:#4c8af7; stroke-width:1.5; }
+.salary-band-box { fill:#dce9ff; stroke:#fff; stroke-width:2; paint-order:stroke fill; transition:filter .16s ease,transform .16s ease; transform-box:fill-box; transform-origin:center; }
+.salary-band-group:hover .salary-band-box,.salary-band-group:focus .salary-band-box { filter:brightness(.97) saturate(1.15); transform:scale(1.05); }
+.salary-band-median { stroke:#3978f6; stroke-width:2; }
+.salary-band-median-diamond { fill:#ee6b78; stroke:white; stroke-width:.8; }
+.salary-band-empty { fill:#a4b1c0; font-size:12px; }
+html[data-theme="dark"] .salary-detail-switch button { color:#c2cedc; border-color:#34475f; background:var(--field); }
+html[data-theme="dark"] .salary-band-grid { stroke:#2b3d52; }
+html[data-theme="dark"] .salary-band-axis { stroke:#40536a; }
+html[data-theme="dark"] .salary-band-tick,
+html[data-theme="dark"] .salary-band-label,
+html[data-theme="dark"] .salary-band-unit { fill:#aebdce; }
+html[data-theme="dark"] .salary-band-box { fill:#24466f; stroke:#fff; }
+@media(max-width:620px){.detail-dialog{height:calc(100vh - 20px);padding:18px}.salary-detail-switch button{width:32px;height:40px}.salary-detail-switch:not([hidden]) + .detail-chart{padding-right:38px;padding-left:38px}}
 
 .grid { display: grid; grid-template-columns: 1.3fr .8fr 1fr; grid-template-rows: repeat(2, minmax(145px, auto)); gap: 16px; margin-bottom: 16px; }
 .chart-card { min-height: 305px; padding: 20px; }

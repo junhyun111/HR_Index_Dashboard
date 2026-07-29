@@ -18,6 +18,11 @@ public static class SettingsEndpoints
         columns.MapPost("/reset",async (EmployeeColumnSettingsService settings,CancellationToken ct)
             =>Results.Ok(await settings.ResetAsync(ct))).RequireAuthorization("Administrator");
 
+        var salaryPositions=endpoints.MapGroup("/api/settings/salary-positions");
+        salaryPositions.MapGet("",async (SalaryPositionAxisSettingsService settings,CancellationToken ct)
+            =>Results.Ok(await settings.GetAsync(ct))).RequireAuthorization("DashboardViewer");
+        salaryPositions.MapPut("",UpdateSalaryPositions).RequireAuthorization("Administrator");
+
         var settings=endpoints.MapGroup("/api/settings").RequireAuthorization("DashboardViewer");
         settings.MapPut("/profile",UpdateProfile);
         settings.MapPut("/theme",UpdateTheme);
@@ -32,6 +37,12 @@ public static class SettingsEndpoints
     private static async Task<IResult> UpdateColumns(EmployeeColumnSettingUpdate[] request,EmployeeColumnSettingsService settings,CancellationToken ct)
     {
         try{return Results.Ok(await settings.UpdateAsync(request,ct));}
+        catch(ArgumentException e){return Results.BadRequest(new{message=e.Message});}
+    }
+
+    private static async Task<IResult> UpdateSalaryPositions(SalaryPositionUpdateRequest request,SalaryPositionAxisSettingsService settings,CancellationToken ct)
+    {
+        try{return Results.Ok(await settings.UpdateAsync(request.Positions??[],ct));}
         catch(ArgumentException e){return Results.BadRequest(new{message=e.Message});}
     }
 
@@ -137,6 +148,7 @@ public static class SettingsEndpoints
 
     private sealed record ProfileUpdateRequest(string? CurrentPassword,string? NewLoginId,string? NewPassword);
     private sealed record ThemeUpdateRequest(string? Theme);
+    private sealed record SalaryPositionUpdateRequest(string?[]? Positions);
     private sealed record AccountCreateRequest(string? LoginId,string? Password,string? Role);
     private sealed record AccountUpdateRequest(string? LoginId,string? NewPassword,string? Role,bool IsActive);
 }

@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-let sessionData=null,columnSettings=[],accounts=[];
+let sessionData=null,columnSettings=[],accounts=[],salaryPositions=[];
 
 function showSettingsPanel(panelId,toggle=false){
   let target=panelId?$(panelId):null;
@@ -42,13 +42,14 @@ async function initialize(){
     document.querySelectorAll('.settings-menu-card.editor-only').forEach(element=>element.hidden=!sessionData.canEdit);
     showSettingsPanel(null);
     if(sessionData.isAdministrator){
-      const [accountRows,columns,history]=await Promise.all([
+      const [accountRows,columns,history,positionRows]=await Promise.all([
         request('/api/settings/accounts'),
         request('/api/settings/employee-columns'),
-        request('/api/settings/database-history')
+        request('/api/settings/database-history'),
+        request('/api/settings/salary-positions')
       ]);
-      accounts=accountRows;columnSettings=columns;
-      renderAccounts();renderColumns();renderHistory(history);
+      accounts=accountRows;columnSettings=columns;salaryPositions=positionRows.map(x=>x.positionName);
+      renderAccounts();renderColumns();renderHistory(history);renderSalaryPositions();
     }
   }catch(error){setMessage('profileStatus',error.message,true);}
 }
@@ -147,6 +148,30 @@ function validateColumns(){
 }
 $('saveColumnsBtn').onclick=async()=>{if(!validateColumns())return;const button=$('saveColumnsBtn');button.disabled=true;try{columnSettings=await request('/api/settings/employee-columns',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify([...document.querySelectorAll('.column-name-input')].map(input=>({key:input.dataset.key,displayName:input.value.trim()})))});renderColumns();setMessage('columnStatus','열 이름을 저장했습니다.',false,true);}catch(error){setMessage('columnStatus',error.message,true);}finally{button.disabled=false;}};
 $('resetColumnsBtn').onclick=async()=>{if(!confirm('모든 열 이름을 기본값으로 복원할까요?'))return;try{columnSettings=await request('/api/settings/employee-columns/reset',{method:'POST'});renderColumns();setMessage('columnStatus','기본 이름으로 복원했습니다.',false,true);}catch(error){setMessage('columnStatus',error.message,true);}};
+
+function renderSalaryPositions(){
+  $('salaryPositionList').innerHTML=salaryPositions.length?salaryPositions.map((name,index)=>`<div class="salary-position-row" data-index="${index}"><span class="salary-position-order">${index+1}</span><span class="salary-position-name">${escapeHtml(name)}</span><span class="salary-position-actions"><button type="button" data-action="up" aria-label="${escapeHtml(name)} 위로 이동" ${index===0?'disabled':''}>↑</button><button type="button" data-action="down" aria-label="${escapeHtml(name)} 아래로 이동" ${index===salaryPositions.length-1?'disabled':''}>↓</button><button type="button" data-action="delete">삭제</button></span></div>`).join(''):'<div class="settings-loading">등록된 직위가 없습니다.</div>';
+  $('salaryPositionList').querySelectorAll('button[data-action]').forEach(button=>button.onclick=()=>{
+    const index=Number(button.closest('.salary-position-row').dataset.index),action=button.dataset.action;
+    if(action==='delete')salaryPositions.splice(index,1);
+    else{const target=action==='up'?index-1:index+1;[salaryPositions[index],salaryPositions[target]]=[salaryPositions[target],salaryPositions[index]];}
+    renderSalaryPositions();setMessage('salaryPositionStatus','변경 내용을 저장해 주세요.');
+  });
+}
+function addSalaryPosition(){
+  const input=$('salaryPositionInput'),name=input.value.trim();
+  if(!name){setMessage('salaryPositionStatus','추가할 직위 이름을 입력해 주세요.',true);return;}
+  if(salaryPositions.some(x=>x.toLocaleLowerCase('ko-KR')===name.toLocaleLowerCase('ko-KR'))){setMessage('salaryPositionStatus','이미 등록된 직위입니다.',true);return;}
+  salaryPositions.push(name);input.value='';renderSalaryPositions();setMessage('salaryPositionStatus','변경 내용을 저장해 주세요.');
+}
+$('addSalaryPositionBtn').onclick=addSalaryPosition;
+$('salaryPositionInput').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();addSalaryPosition();}};
+$('saveSalaryPositionsBtn').onclick=async()=>{
+  const button=$('saveSalaryPositionsBtn');button.disabled=true;
+  try{const rows=await request('/api/settings/salary-positions',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({positions:salaryPositions})});salaryPositions=rows.map(x=>x.positionName);renderSalaryPositions();setMessage('salaryPositionStatus','연봉 그래프 직위 설정을 저장했습니다.',false,true);}
+  catch(error){setMessage('salaryPositionStatus',error.message,true);}
+  finally{button.disabled=false;}
+};
 
 function renderHistory(rows){
   $('databaseHistory').innerHTML=rows.length?rows.map(item=>`<div class="history-item"><span class="history-time">${formatDateTime(item.occurredAtUtc)}</span><span class="history-action">${escapeHtml(item.action)}</span><span class="history-user">${escapeHtml(item.userName)}</span><span class="history-detail">${item.databaseDate.slice(0,10)} · ${escapeHtml(item.detail)}</span></div>`).join(''):'<div class="settings-loading">아직 저장된 DB 업데이트 이력이 없습니다.</div>';

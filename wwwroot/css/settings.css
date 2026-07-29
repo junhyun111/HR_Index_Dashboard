@@ -22,6 +22,7 @@
 .panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:20px 22px; border-bottom:1px solid var(--line); }
 .panel-head-actions { align-items:center; }
 .panel-head h2 { margin:0; font-size:15px; }
+.panel-description { margin:7px 0 0; color:var(--muted); font-size:10px; }
 .settings-form { display:grid; grid-template-columns:1fr 1fr; gap:13px; padding:20px 22px; }
 .settings-form label { display:grid; gap:7px; color:var(--muted); font-size:10px; font-weight:750; }
 .settings-form label:first-child { grid-column:1/-1; }
@@ -54,6 +55,20 @@
 .column-name-input { width:min(320px,100%); height:34px; padding:0 10px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:var(--field,#fff); outline:none; font-size:11px; }
 .column-name-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(57,120,246,.1); }
 .column-name-input.is-invalid { border-color:#dd5366; }
+.salary-position-add { display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:9px; padding:18px 22px 9px; }
+.salary-position-add input { width:100%; height:38px; padding:0 11px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:var(--field,#fff); outline:none; font-size:11px; }
+.salary-position-add input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(57,120,246,.1); }
+.salary-position-status { display:block; padding:0 22px 10px; }
+.salary-position-list { display:grid; padding:0 22px 20px; }
+.salary-position-row { display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:11px; min-height:48px; padding:7px 9px; border-top:1px solid var(--line); }
+.salary-position-row:first-child { border-top:0; }
+.salary-position-order { color:var(--muted); font-size:10px; text-align:center; }
+.salary-position-name { overflow:hidden; font-size:12px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+.salary-position-actions { display:flex; gap:5px; }
+.salary-position-actions button { width:30px; height:30px; padding:0; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:var(--field,#fff); cursor:pointer; }
+.salary-position-actions button:hover:not(:disabled) { color:var(--blue); border-color:#b5ccf8; }
+.salary-position-actions button[data-action="delete"] { width:auto; padding:0 9px; color:#d94f61; }
+.salary-position-actions button:disabled { opacity:.3; cursor:default; }
 .account-table { min-width:900px; }
 .account-table td:nth-child(1){width:28%}.account-table td:nth-child(2){width:16%}.account-table td:nth-child(3){width:20%}
 .account-state { display:flex; align-items:center; gap:7px; color:var(--muted); white-space:nowrap; }
@@ -74,5 +89,5 @@ html[data-theme="dark"] .internal-key { color:#7ea8ff; background:rgba(75,136,25
 html[data-theme="dark"] .settings-menu-card { background:var(--paper); }
 @media(max-width:1050px){.settings-layout{grid-template-columns:210px minmax(0,1fr)}.settings-menu-card{grid-template-columns:38px minmax(0,1fr) auto;padding:12px}.settings-menu-icon{width:38px;height:38px}}
 @media(max-width:900px){.settings-layout{grid-template-columns:1fr}.settings-menu{position:static}.account-create{grid-template-columns:1fr 1fr}.account-create button{width:100%}.history-item{grid-template-columns:1fr 1fr}.history-detail{grid-column:1/-1}}
-@media(max-width:620px){.settings-form,.theme-choices{grid-template-columns:1fr}.settings-form label{grid-column:1}.account-create{grid-template-columns:1fr}.panel-head-actions{align-items:stretch;flex-direction:column}.settings-actions{justify-content:flex-end}.settings-table th,.settings-table td{padding:10px 12px}.settings-table:not(.account-table) th:nth-child(2),.settings-table:not(.account-table) td:nth-child(2){display:none}}
+@media(max-width:620px){.settings-form,.theme-choices{grid-template-columns:1fr}.settings-form label{grid-column:1}.account-create{grid-template-columns:1fr}.panel-head-actions{align-items:stretch;flex-direction:column}.settings-actions{justify-content:flex-end}.settings-table th,.settings-table td{padding:10px 12px}.settings-table:not(.account-table) th:nth-child(2),.settings-table:not(.account-table) td:nth-child(2){display:none}.salary-position-add{grid-template-columns:1fr}.salary-position-actions button{width:28px}}
 @media(max-width:480px){.settings-menu-card{min-height:70px}}
