@@ -23,10 +23,12 @@ public sealed class EmployeeColumnSettingsService(CommonSettingsDbContext db)
         new("jobGroup","직군",9),
         new("employmentType","사원구분",10),
         new("gender","성별",11),
-        new("birthDate","생년월일",12),
-        new("hireDate","입사일자",13),
-        new("terminationDate","퇴사일자",14),
-        new("monthlyWage","월임금",15)
+        new("education","최종학력",12),
+        new("major","전공",13),
+        new("birthDate","생년월일",14),
+        new("hireDate","입사일자",15),
+        new("terminationDate","퇴사일자",16),
+        new("annualSalary","연봉",17)
     ];
 
     public async Task EnsureSeededAsync(CancellationToken ct=default)

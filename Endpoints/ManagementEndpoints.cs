@@ -31,26 +31,30 @@ public static class ManagementEndpoints
         if(employeeSource is not null)
         {
             if(string.Equals(employeeSource.Value.Path,databases.PathFor(databases.SelectedDate),StringComparison.OrdinalIgnoreCase))
+            {
+                await databases.MigrateExistingDatabaseAsync(employeeDb,ct);
                 active=await employeeDb.Employees.AsNoTracking().Where(x=>x.TerminationDate==null||x.TerminationDate>=today).ToListAsync(ct);
+            }
             else
             {
                 var fallbackOptions=new DbContextOptionsBuilder<AppDbContext>().UseSqlite($"Data Source={employeeSource.Value.Path}").Options;
                 await using var fallbackDb=new AppDbContext(fallbackOptions);
+                await databases.MigrateExistingDatabaseAsync(fallbackDb,ct);
                 active=await fallbackDb.Employees.AsNoTracking().Where(x=>x.TerminationDate==null||x.TerminationDate>=today).ToListAsync(ct);
             }
         }
         var hasEmployeeData=employeeSource is not null;
         int? headcount=hasEmployeeData?active.Count:null;
-        long? monthlyPayroll=canViewSalary&&hasEmployeeData?active.Where(x=>x.MonthlyWage!=null).Sum(x=>x.MonthlyWage??0):null;
-        int? wageCount=canViewSalary&&hasEmployeeData?active.Count(x=>x.MonthlyWage!=null):null;
+        long? annualPayroll=canViewSalary&&hasEmployeeData?active.Where(x=>x.AnnualSalary!=null).Sum(x=>x.AnnualSalary??0):null;
+        int? salaryCount=canViewSalary&&hasEmployeeData?active.Count(x=>x.AnnualSalary!=null):null;
         double? Ratio(long? a,long? b)=>a!=null&&b is not null and not 0?Math.Round(a.Value/(double)b.Value*100,1):null;
         double? PerPerson(long? value,int? count)=>value!=null&&count>0?Math.Round(value.Value/(double)count.Value):null;
-        long? annualPayroll=canViewSalary?latest?.DartSalaryTotal:null;
+        long? dartAnnualPayroll=canViewSalary?latest?.DartSalaryTotal:null;
         return Results.Ok(new{
-            company=new{name="이노뎁",stockCode="303530"},canViewSalary,headcount,monthlyPayroll,wageCount,
+            company=new{name="이노뎁",stockCode="303530"},canViewSalary,headcount,annualPayroll,salaryCount,
             latest=latest==null?null:new{latest.BusinessYear,latest.ReportCode,latest.ReportName,latest.FsDiv,latest.ReceiptNumber,latest.Revenue,latest.OperatingIncome,latest.NetIncome,latest.Assets,latest.Liabilities,latest.Equity,latest.SyncedAtUtc,
                 operatingMargin=Ratio(latest.OperatingIncome,latest.Revenue),debtRatio=Ratio(latest.Liabilities,latest.Equity),revenuePerEmployee=PerPerson(latest.Revenue,latest.DartEmployeeCount),operatingIncomePerEmployee=PerPerson(latest.OperatingIncome,latest.DartEmployeeCount),
-                laborCostRatio=annualPayroll>0?Ratio(annualPayroll,latest.Revenue):null,laborRoi=annualPayroll>0&&latest.OperatingIncome!=null?(double?)Math.Round((latest.OperatingIncome.Value+annualPayroll.Value)/(double)annualPayroll.Value*100,1):null},
+                laborCostRatio=dartAnnualPayroll>0?Ratio(dartAnnualPayroll,latest.Revenue):null,laborRoi=dartAnnualPayroll>0&&latest.OperatingIncome!=null?(double?)Math.Round((latest.OperatingIncome.Value+dartAnnualPayroll.Value)/(double)dartAnnualPayroll.Value*100,1):null},
             reports=reports.Select(x=>new{x.BusinessYear,x.ReportCode,x.ReportName,x.FsDiv,x.ReceiptNumber,x.Revenue,x.OperatingIncome,x.NetIncome,x.Assets,x.Liabilities,x.Equity,x.DartEmployeeCount,x.EmployeeCountIsEstimated,x.EmployeeCountBasis,
                 DartSalaryTotal=canViewSalary?x.DartSalaryTotal:null,DartAverageSalary=canViewSalary?x.DartAverageSalary:null,x.SyncedAtUtc})
         });

@@ -259,7 +259,7 @@ html[data-theme="dark"] .snapshot-file { color:#b9cced; background:#1b3150; }
 .data-as-of { margin-left: 6px; color: #8795a5; font-size: 11px; font-weight: 500; }
 .table-scroll { width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-gutter: stable; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.employee-table { width: 100%; min-width: 1780px; table-layout: fixed; }
+.employee-table { width: 100%; min-width: 2070px; table-layout: fixed; }
 .employee-table .col-workplace { width: 190px; }
 .employee-table .col-parent-department { width: 125px; }
 .employee-table .col-department { width: 140px; }
@@ -271,8 +271,10 @@ table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .employee-table .col-job-group { width: 100px; }
 .employee-table .col-employment-type { width: 105px; }
 .employee-table .col-gender { width: 70px; }
+.employee-table .col-education { width: 110px; }
+.employee-table .col-major { width: 150px; }
 .employee-table .col-date { width: 115px; }
-.employee-table .col-wage { width: 130px; }
+.employee-table .col-salary { width: 140px; }
 th { padding: 12px 15px; color: #7d8b9c; background: #f8fafc; font-size: 10px; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; }
 td { overflow: hidden; padding: 13px 15px; border-top: 1px solid #edf1f5; color: #4a5d72; text-overflow: ellipsis; white-space: nowrap; }
 tbody tr:hover { background: #f7faff; }

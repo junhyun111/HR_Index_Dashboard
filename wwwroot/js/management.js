@@ -59,8 +59,8 @@ function renderKpis(x){
 }
 
 function renderSummary(x){
-  $('headcount').textContent=count(dashboard.headcount);$('wageCount').textContent=canViewSalary?count(dashboard.wageCount):'권한 필요';
-  $('monthlyPayroll').textContent=canViewSalary?money(dashboard.monthlyPayroll):'권한 필요';$('debtRatio').textContent=pct(ratio(x.liabilities,x.equity));
+  $('headcount').textContent=count(dashboard.headcount);$('salaryCount').textContent=canViewSalary?count(dashboard.salaryCount):'권한 필요';
+  $('annualPayroll').textContent=canViewSalary?money(dashboard.annualPayroll):'권한 필요';$('debtRatio').textContent=pct(ratio(x.liabilities,x.equity));
   $('fsDiv').textContent=x.fsDiv==='CFS'?'연결재무제표':'별도재무제표';$('syncedAt').textContent=new Date(x.syncedAtUtc).toLocaleString('ko-KR');
   $('dartLink').href=x.receiptNumber?`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${encodeURIComponent(x.receiptNumber)}`:'https://dart.fss.or.kr/';
 }

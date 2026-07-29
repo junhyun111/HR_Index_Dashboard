@@ -199,10 +199,17 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
     }
 
     public async Task MigrateSelectedDatabaseAsync(AppDbContext db,CancellationToken ct)
+        =>await MigrateExistingDatabaseAsync(db,ct);
+
+    public async Task MigrateExistingDatabaseAsync(AppDbContext db,CancellationToken ct)
     {
         // EnsureCreated로 만든 기존 날짜별 DB에는 EF 마이그레이션 이력이 없다.
         // 현재 스키마를 최초 마이그레이션 기준점으로 한 번만 등록해 이후 변경부터는 EF가 관리한다.
-        if(await SelectedDatabaseHasEmployeesTableAsync(ct))
+        var connection=db.Database.GetDbConnection();
+        if(connection.State!=System.Data.ConnectionState.Open)await connection.OpenAsync(ct);
+        await using var tableCheck=connection.CreateCommand();
+        tableCheck.CommandText="SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Employees'";
+        if(Convert.ToInt32(await tableCheck.ExecuteScalarAsync(ct))>0)
         {
             await db.Database.ExecuteSqlRawAsync("""
                 CREATE TABLE IF NOT EXISTS __EFMigrationsHistory (

@@ -23,6 +23,9 @@ namespace HRDashboard.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("AnnualSalary")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("BirthDate")
                         .HasColumnType("TEXT");
 
@@ -43,6 +46,10 @@ namespace HRDashboard.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Education")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Gender")
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
@@ -54,8 +61,9 @@ namespace HRDashboard.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<long?>("MonthlyWage")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("Major")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .HasMaxLength(100)
