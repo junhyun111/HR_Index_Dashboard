@@ -183,16 +183,30 @@ public static class DashboardEndpoints
         var lastModifiedAt=await ReadLastModifiedAt(db,ct);
         var isAutomaticallyUpdated=lastModifiedAt==null&&await databases.IsAutomaticallyUpdatedAsync(dataAsOf,ct);
         var pages=Math.Max(1,(int)Math.Ceiling(filteredCount/(double)pageSize)); page=Math.Min(page,pages);
-        CountResponse[] Counts(Func<Employee,string?> pick)=>rows.Select(pick).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label).ToArray();
         var genders=rows.Select(x=>x.Gender).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).ToDictionary(x=>x.Key,x=>x.Count());
         var averageMonthlyWage=canViewSalary?AverageMonthlyWage(rows):null;
         var monthlyWages=canViewSalary?MonthlyWageGroups(rows):Array.Empty<CountResponse>();
+        var departments=rows
+            .Where(x=>!string.IsNullOrWhiteSpace(x.Department))
+            .GroupBy(x=>x.Department!)
+            .Select(group=>new DepartmentCountResponse(
+                group.Key,
+                group.Count(),
+                group.GroupBy(x=>string.IsNullOrWhiteSpace(x.Position)?"미지정":x.Position!)
+                    .Select(position=>new CountResponse(position.Key,position.Count()))
+                    .OrderByDescending(position=>position.Value)
+                    .ThenBy(position=>position.Label)
+                    .ToArray()))
+            .Where(x=>x.Value>1)
+            .OrderByDescending(x=>x.Value)
+            .ThenBy(x=>x.Label)
+            .ToArray();
         if(!canViewSalary)
             foreach(var employee in rows)employee.MonthlyWage=null;
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct) },
             summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,isAutomaticallyUpdated,averageAge=AverageAge(rows,referenceDate),averageMonthlyWage,averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
-            departments=Counts(x=>x.Department).Where(x=>x.Value>1),genders,
+            departments,genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,referenceDate),
             monthlyWages,
@@ -225,7 +239,7 @@ public static class DashboardEndpoints
         return Results.Ok(new {
             filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>() },
             summary=new { totalCount=0,filteredCount=0,dataAsOf,lastModifiedAt=(DateTimeOffset?)null,isAutomaticallyUpdated=false,averageAge=(double?)null,averageMonthlyWage=(long?)null,averageTenure=(double?)null,hiresThisYear=0,terminationsThisYear=0 },
-            departments=Array.Empty<CountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
+            departments=Array.Empty<DepartmentCountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
             tenureGroups=Array.Empty<CountResponse>(),monthlyWages=Array.Empty<CountResponse>(),ageGroups=Array.Empty<CountResponse>(),ageTenurePoints=Array.Empty<AgeTenurePoint>(),
             monthlyHires=months,monthlyTerminations=months,employees=Array.Empty<Employee>(),
             pagination=new {page,pageSize,pages=1,totalCount=0}
@@ -341,6 +355,7 @@ public static class DashboardEndpoints
         return rows.OrderBy(key).ToList();
     }
     private sealed record CountResponse(string Label,int Value);
+    private sealed record DepartmentCountResponse(string Label,int Value,IReadOnlyList<CountResponse> Positions);
     private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? MonthlyWage);

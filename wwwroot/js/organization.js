@@ -5,7 +5,7 @@ const DEFAULT_ORGANIZATION = [
   { id:'audit-office', name:'제도감사실', type:'office', parentId:'ceo' },
   { id:'cao', name:'CAO', type:'executive', parentId:'ceo' },
   { id:'cfo', name:'CFO 그룹', type:'group', parentId:'cao' },
-  { id:'cfo-finance', name:'재무혁식부분', type:'division', parentId:'cfo' },
+  { id:'cfo-finance', name:'재무혁신부분', type:'division', parentId:'cfo' },
   { id:'finance-accounting', name:'재무회계팀', type:'team', parentId:'cfo-finance' },
   { id:'business-planning', name:'경영기획팀', type:'team', parentId:'cfo-finance' },
   { id:'cfo-innovation', name:'경영혁신부문', type:'division', parentId:'cfo' },
