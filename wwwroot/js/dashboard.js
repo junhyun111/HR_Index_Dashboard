@@ -50,6 +50,36 @@ function renderPersonnelMovements(){
   $('movementList').innerHTML=rows.length?rows.map(item=>`<div class="movement-row ${item.canDelete?'is-scheduled':''}"><span>${item.date.slice(0,10).replaceAll('-','.')}</span><strong title="${esc(item.name)}">${esc(item.name)}${item.type==='입사예정자'?'<small class="movement-type">입사예정자</small>':''}</strong><span title="${esc(item.department||'-')}">${esc(item.department||'-')}</span><span title="${esc(item.position||'-')}">${esc(item.position||'-')}</span>${item.canDelete&&canEdit?`<button class="movement-delete" type="button" data-id="${item.id}" aria-label="${esc(item.name)} 입사예정 취소">×</button>`:''}</div>`).join(''):'<div class="movement-empty">해당 기간의 인원이 없습니다.</div>';
   $('movementList').querySelectorAll('.movement-delete').forEach(button=>button.onclick=()=>deleteScheduledHire(Number(button.dataset.id)));
 }
+let movementTransitionVersion=0,movementTransitionTarget='hires';
+async function switchMovementMode(nextMode){
+  if(nextMode===movementTransitionTarget)return;
+  const list=$('movementList'),version=++movementTransitionVersion,direction=nextMode==='terminations'?1:-1;
+  movementTransitionTarget=nextMode;
+  list.getAnimations().forEach(animation=>animation.cancel());
+  list.style.removeProperty('opacity');list.style.removeProperty('transform');
+  if(nextMode===movementMode)return;
+  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try{
+    if(!reduceMotion)await list.animate(
+      [{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*14}px)`}],
+      {duration:120,easing:'ease-in',fill:'forwards'}
+    ).finished;
+    if(version!==movementTransitionVersion)return;
+    movementMode=nextMode;renderPersonnelMovements();
+    if(!reduceMotion)await list.animate(
+      [{opacity:0,transform:`translateX(${direction*14}px)`},{opacity:1,transform:'translateX(0)'}],
+      {duration:180,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'}
+    ).finished;
+  }catch(error){
+    if(version===movementTransitionVersion&&error?.name!=='AbortError')console.warn('입·퇴사자 전환이 중단되었습니다.',error);
+  }finally{
+    if(version===movementTransitionVersion){
+      list.getAnimations().forEach(animation=>animation.cancel());
+      list.style.removeProperty('opacity');list.style.removeProperty('transform');
+      movementTransitionTarget=movementMode;
+    }
+  }
+}
 async function deleteScheduledHire(id){
   const item=(movementData.hires||[]).find(x=>x.id===id);
   if(!item||!confirm(`${item.name}님의 입사예정을 취소할까요?`))return;
@@ -89,8 +119,8 @@ function openEmployeeSearch(mode){employeeSearchMode=mode;$('employeeSearchTitle
 async function searchEmployees(){const q=encodeURIComponent($('employeeSearchInput').value.trim()),r=await fetch(`/api/employees/search?q=${q}`);if(!r.ok){$('employeeSearchResults').innerHTML='<div class="employee-search-empty">검색 결과를 불러오지 못했습니다.</div>';return;}const rows=await r.json();$('employeeSearchResults').innerHTML=rows.length?rows.map(x=>`<button class="employee-result" type="button" data-id="${x.id}"><strong>${esc(x.name||'-')}</strong><span>${esc(x.employeeNumber)}</span><span>${esc(x.department||'-')}</span></button>`).join(''):'<div class="employee-search-empty">검색 결과가 없습니다.</div>';$('employeeSearchResults').querySelectorAll('button').forEach((button,i)=>button.onclick=()=>selectEmployee(rows[i]));}
 async function selectEmployee(x){if(employeeSearchMode==='delete'){if(!confirm(`${x.name||'이름 없음'} (${x.employeeNumber}) 직원을 삭제할까요?`))return;const r=await fetch(`/api/employees/${x.id}`,{method:'DELETE'});if(!r.ok){const data=await r.json().catch(()=>({}));return alert(data.message||'삭제하지 못했습니다.');}$('employeeSearchDialog').close();await refreshDashboard('직원을 삭제했습니다.');return;}$('employeeSearchDialog').close();openEmployee(x);}
 $('employeeSearchInput').oninput=()=>{clearTimeout(employeeSearchTimer);employeeSearchTimer=setTimeout(searchEmployees,250);};$('closeSearchBtn').onclick=()=>$('employeeSearchDialog').close();
-$('hireMovementTab').onclick=()=>{movementMode='hires';renderPersonnelMovements();};
-$('terminationMovementTab').onclick=()=>{movementMode='terminations';renderPersonnelMovements();};
+$('hireMovementTab').onclick=()=>switchMovementMode('hires');
+$('terminationMovementTab').onclick=()=>switchMovementMode('terminations');
 $('addScheduledHireBtn').onclick=()=>{
   $('scheduledHireForm').reset();$('scheduledHireError').textContent='';
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
@@ -105,7 +135,7 @@ $('scheduledHireForm').onsubmit=async e=>{
   const form=new FormData(e.currentTarget),data=Object.fromEntries(form.entries());
   const r=await fetch('/api/personnel-movements/hires',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   if(!r.ok){const x=await r.json().catch(()=>({}));$('scheduledHireError').textContent=x.message||'입사예정자를 등록하지 못했습니다.';return;}
-  $('scheduledHireDialog').close();movementMode='hires';await loadPersonnelMovements();
+  $('scheduledHireDialog').close();movementMode='hires';movementTransitionTarget='hires';await loadPersonnelMovements();
 };
 $('employeeForm').onsubmit=async e=>{e.preventDefault();const id=$('employeeId').value,data={};employeeFields.forEach(name=>data[name]=$('employeeForm').elements[name].value||null);if(data.annualSalary!=null)data.annualSalary=Number(data.annualSalary);const r=await fetch(id?`/api/employees/${id}`:'/api/employees',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok){const x=await r.json().catch(()=>({}));$('employeeFormError').textContent=x.message||'저장하지 못했습니다.';return;}$('employeeDialog').close();await refreshDashboard(id?'직원 정보를 수정했습니다.':'직원을 추가했습니다.');};['closeEmployeeBtn','cancelEmployeeBtn'].forEach(id=>$(id).onclick=()=>$('employeeDialog').close());
 async function refreshDashboard(message){initialized=false;['workplaceFilter','deptFilter','positionFilter'].forEach(id=>$(id).options.length=1);page=1;await load();$('importStatus').textContent=message;}
