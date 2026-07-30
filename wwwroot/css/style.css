@@ -210,7 +210,8 @@ html[data-theme="dark"] .salary-band-tooltip span,html[data-theme="dark"] .salar
 .movement-add { height: 27px; padding: 0 8px; border: 1px solid #cfe0f5; border-radius: 7px; color: #3167a8; background: #eff6ff; font-size: 9px; font-weight: 800; cursor: pointer; }
 .movement-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 12px 0 9px; padding: 3px; border-radius: 8px; background: #f0f4f8; }
 .movement-tabs button { height: 28px; border: 0; border-radius: 6px; color: #718196; background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; transition:color .18s ease,background-color .18s ease,box-shadow .18s ease,transform .18s ease; }
-.movement-tabs button:active { transform:scale(.98); }
+.movement-tabs button:active:not(:disabled) { transform:scale(.98); }
+.movement-tabs button:disabled { opacity:.5; cursor:default; }
 .movement-tabs button.active { color: #315f9e; background: white; box-shadow: 0 2px 7px rgba(24,59,104,.08); }
 .movement-tabs span { display: inline-grid; min-width: 17px; height: 17px; place-items: center; margin-left: 3px; border-radius: 9px; color: inherit; background: #e6edf5; font-size: 9px; }
 .movement-head,.movement-row { display: grid; grid-template-columns: 75px minmax(54px,.8fr) minmax(62px,1.1fr) minmax(48px,.7fr) 20px; align-items: center; gap: 7px; }

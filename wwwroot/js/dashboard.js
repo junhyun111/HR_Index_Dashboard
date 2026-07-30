@@ -50,9 +50,19 @@ function renderPersonnelMovements(){
   $('movementList').innerHTML=rows.length?rows.map(item=>`<div class="movement-row ${item.canDelete?'is-scheduled':''}"><span>${item.date.slice(0,10).replaceAll('-','.')}</span><strong title="${esc(item.name)}">${esc(item.name)}${item.type==='입사예정자'?'<small class="movement-type">입사예정자</small>':''}</strong><span title="${esc(item.department||'-')}">${esc(item.department||'-')}</span><span title="${esc(item.position||'-')}">${esc(item.position||'-')}</span>${item.canDelete&&canEdit?`<button class="movement-delete" type="button" data-id="${item.id}" aria-label="${esc(item.name)} 입사예정 취소">×</button>`:''}</div>`).join(''):'<div class="movement-empty">해당 기간의 인원이 없습니다.</div>';
   $('movementList').querySelectorAll('.movement-delete').forEach(button=>button.onclick=()=>deleteScheduledHire(Number(button.dataset.id)));
 }
-let movementTransitionVersion=0,movementTransitionTarget='hires';
+let movementTransitionVersion=0,movementTransitionTarget='hires',movementLockedUntil=0,movementUnlockTimer;
+function lockMovementNavigation(){
+  movementLockedUntil=Date.now()+1300;
+  clearTimeout(movementUnlockTimer);
+  [$('hireMovementTab'),$('terminationMovementTab')].forEach(button=>button.disabled=true);
+  movementUnlockTimer=setTimeout(()=>{
+    if(Date.now()>=movementLockedUntil)
+      [$('hireMovementTab'),$('terminationMovementTab')].forEach(button=>button.disabled=false);
+  },1300);
+}
 async function switchMovementMode(nextMode){
-  if(nextMode===movementTransitionTarget)return;
+  if(nextMode===movementTransitionTarget||Date.now()<movementLockedUntil)return;
+  lockMovementNavigation();
   const list=$('movementList'),version=++movementTransitionVersion,direction=nextMode==='terminations'?1:-1;
   movementTransitionTarget=nextMode;
   list.getAnimations().forEach(animation=>animation.cancel());
