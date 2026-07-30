@@ -2,7 +2,6 @@ using HRDashboard.Data;
 using HRDashboard.Models;
 using HRDashboard.Services;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace HRDashboard.Endpoints;
 
@@ -30,6 +29,9 @@ public static class DashboardEndpoints
         api.MapGet("/employee-dates", (DailyEmployeeDatabaseService databases) => Results.Ok(databases.AvailableDates())).RequireAuthorization("DashboardViewer");
         api.MapGet("/employees/headcount-trend", async (string? mode,DailyEmployeeDatabaseService databases,CancellationToken ct)
             =>Results.Ok(await databases.HeadcountTrendAsync(mode,ct))).RequireAuthorization("DashboardViewer");
+        api.MapGet("/personnel-movements",PersonnelMovements).RequireAuthorization("DashboardViewer");
+        api.MapPost("/personnel-movements/hires",AddScheduledHire).RequireAuthorization("Editor");
+        api.MapDelete("/personnel-movements/hires/{id:long}",DeleteScheduledHire).RequireAuthorization("Editor");
         api.MapGet("/employees/export", Export).RequireAuthorization("Editor");
         api.MapPost("/employees/import", Import).DisableAntiforgery().RequireAuthorization("Editor");
         api.MapPost("/employees/paste", Paste).RequireAuthorization("Editor");
@@ -40,6 +42,34 @@ public static class DashboardEndpoints
         api.MapDelete("/employees/{id:long}", DeleteEmployee).RequireAuthorization("Editor");
         return endpoints;
     }
+
+    private static async Task<IResult> PersonnelMovements(
+        AppDbContext employeeDb,DailyEmployeeDatabaseService databases,EmployeeMovementService movements,CancellationToken ct)
+    {
+        if(await databases.SelectedDatabaseHasEmployeesTableAsync(ct))
+        {
+            await databases.MigrateExistingDatabaseAsync(employeeDb,ct);
+            await movements.SyncFromEmployeeDatabaseAsync(employeeDb,DateTime.Today,ct);
+        }
+        return Results.Ok(await movements.GetAsync(DateTime.Today,ct));
+    }
+
+    private static async Task<IResult> AddScheduledHire(
+        ScheduledHireRequest request,HttpContext context,EmployeeMovementService movements,CancellationToken ct)
+    {
+        try
+        {
+            var item=await movements.AddScheduledHireAsync(
+                request.EmployeeNumber??"",request.Name??"",request.Department,request.HireDate,
+                context.User.Identity?.Name??"알 수 없음",ct);
+            return Results.Created($"/api/personnel-movements/hires/{item.Id}",item);
+        }
+        catch(ArgumentException e){return Results.BadRequest(new{message=e.Message});}
+        catch(InvalidOperationException e){return Results.Conflict(new{message=e.Message});}
+    }
+
+    private static async Task<IResult> DeleteScheduledHire(long id,EmployeeMovementService movements,CancellationToken ct)
+        =>await movements.DeleteScheduledHireAsync(id,ct)?Results.NoContent():Results.NotFound(new{message="삭제할 입사예정자를 찾을 수 없습니다."});
 
     private static async Task<IResult> SearchEmployees(string? q, AppDbContext db, DailyEmployeeDatabaseService databases, CancellationToken ct)
     {
@@ -170,11 +200,10 @@ public static class DashboardEndpoints
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
-        string? sort, string? direction, int page, int pageSize, HttpContext context, AppDbContext db,
+        int page, int pageSize, HttpContext context, AppDbContext db,
         DailyEmployeeDatabaseService databases,SalaryPositionAxisSettingsService salaryPositionSettings,CancellationToken ct)
     {
         var canViewSalary=context.User.IsInRole("Administrator")||context.User.IsInRole("HrAdministrator");
-        if(!canViewSalary&&sort=="annualSalary")sort=null;
         page=Math.Max(1,page); pageSize=Math.Clamp(pageSize==0?10:pageSize,1,100);
         var salaryPositionAxes=await salaryPositionSettings.GetAsync(ct);
         // 조회만으로 빈 날짜 DB를 만들지 않는다. 기존에 남아 있는 빈 파일도 빈 화면으로 처리한다.
@@ -185,7 +214,7 @@ public static class DashboardEndpoints
         if (!string.IsNullOrWhiteSpace(department)) query=query.Where(x=>x.Department==department||x.ParentDepartment==department);
         if (!string.IsNullOrWhiteSpace(position)) query=query.Where(x=>x.Position==position);
         if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))); }
-        var rows=Sort(await query.ToListAsync(ct),sort); var filteredCount=rows.Count;
+        var rows=await query.ToListAsync(ct); var filteredCount=rows.Count;
         var dataAsOf=databases.SelectedDate.Date;
         var referenceDate=dataAsOf;
         var lastModifiedAt=await ReadLastModifiedAt(db,ct);
@@ -357,41 +386,11 @@ public static class DashboardEndpoints
     }
 
     private static async Task<string[]> Values(IQueryable<string?> q,CancellationToken ct)=>await q.Where(x=>x!=null&&x!="").Select(x=>x!).Distinct().Order().ToArrayAsync(ct);
-    private static List<Employee> Sort(List<Employee> rows,string? sort)
-    {
-        if(string.IsNullOrWhiteSpace(sort)) return rows;
-        var korean=StringComparer.Create(new CultureInfo("ko-KR"),ignoreCase:true);
-        if(sort=="workplace")
-        {
-            int WorkplaceOrder(string? value)=>value switch
-            {
-                null or ""=>0,
-                "이노뎁(주)"=>1,
-                "이노뎁(주) 안양센터"=>2,
-                "이노뎁(주) 부산지사"=>3,
-                _=>4
-            };
-            return rows.OrderBy(x=>WorkplaceOrder(x.Workplace))
-                .ThenBy(x=>x.Workplace,korean)
-                .ThenByDescending(x=>x.TerminationDate==null)
-                .ThenBy(x=>x.TerminationDate)
-                .ThenBy(x=>x.Name,korean)
-                .ToList();
-        }
-        if(sort=="terminationDate")
-            return rows.OrderByDescending(x=>x.TerminationDate==null)
-                .ThenBy(x=>x.TerminationDate)
-                .ThenBy(x=>x.Name,korean)
-                .ToList();
-        if(sort=="name")
-            return rows.OrderBy(x=>x.Name,korean).ToList();
-        Func<Employee,object?> key=sort switch { "employeeNumber"=>x=>x.EmployeeNumber,"workplace"=>x=>x.Workplace,"parentDepartment"=>x=>x.ParentDepartment,"department"=>x=>x.Department,"position"=>x=>x.Position,"workShift"=>x=>x.WorkShift,"duty"=>x=>x.Duty,"jobGroup"=>x=>x.JobGroup,"employmentType"=>x=>x.EmploymentType,"gender"=>x=>x.Gender,"education"=>x=>x.Education,"major"=>x=>x.Major,"birthDate"=>x=>x.BirthDate,"hireDate"=>x=>x.HireDate,"terminationDate"=>x=>x.TerminationDate,"annualSalary"=>x=>x.AnnualSalary,"name"=>x=>x.Name,_=>x=>x.Id };
-        return rows.OrderBy(key).ToList();
-    }
     private sealed record CountResponse(string Label,int Value);
     private sealed record DepartmentCountResponse(string Label,int Value,IReadOnlyList<CountResponse> Positions);
     private sealed record SalaryPositionBand(string Label,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max,double? Average);
     private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
+    private sealed record ScheduledHireRequest(string? EmployeeNumber,string? Name,string? Department,DateTime HireDate);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,string? Education,string? Major,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? AnnualSalary);
 }

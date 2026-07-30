@@ -28,6 +28,9 @@ dotnet run
 - `GET /api/settings/database-history`: 관리자 전용 사원 DB 업데이트 이력
 - `GET /api/dashboard`: 필터, 집계, 직원 페이지 조회
 - `GET /api/employees/headcount-trend`: 최근 12개월 또는 15일의 날짜별 DB 인원 추이 조회
+- `GET /api/personnel-movements`: 최근 30일 입사자·향후 30일 퇴사예정자 조회
+- `POST /api/personnel-movements/hires`: 입사예정자 등록
+- `DELETE /api/personnel-movements/hires/{id}`: 입사예정자 등록 취소
 - `GET /api/employees/export`: 직원 데이터를 Excel `.xlsx`로 내려받기
 - `POST /api/employees/import`: 수정된 `.csv`를 검증한 뒤 직원 추가/수정
 - `POST /api/employees/paste`: Excel에서 복사한 탭 구분 표를 검증한 뒤 직원 추가/수정

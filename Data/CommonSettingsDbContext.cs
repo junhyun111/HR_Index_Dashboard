@@ -9,6 +9,8 @@ public sealed class CommonSettingsDbContext(DbContextOptions<CommonSettingsDbCon
     public DbSet<SalaryPositionAxisSetting> SalaryPositionAxisSettings => Set<SalaryPositionAxisSetting>();
     public DbSet<ApplicationUser> Users => Set<ApplicationUser>();
     public DbSet<EmployeeDatabaseChange> EmployeeDatabaseChanges => Set<EmployeeDatabaseChange>();
+    public DbSet<HireEmployee> HireEmployees => Set<HireEmployee>();
+    public DbSet<TerminationEmployee> TerminationEmployees => Set<TerminationEmployee>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +47,29 @@ public sealed class CommonSettingsDbContext(DbContextOptions<CommonSettingsDbCon
             entity.Property(x=>x.Action).HasMaxLength(50).IsRequired();
             entity.Property(x=>x.Detail).HasMaxLength(300).IsRequired();
             entity.HasIndex(x=>x.OccurredAtUtc);
+        });
+        modelBuilder.Entity<HireEmployee>(entity =>
+        {
+            entity.ToTable("HireEmployees");
+            entity.HasKey(x=>x.Id);
+            entity.Property(x=>x.EmployeeNumber).HasMaxLength(50).IsRequired();
+            entity.Property(x=>x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x=>x.Department).HasMaxLength(100);
+            entity.Property(x=>x.Source).HasMaxLength(30).IsRequired();
+            entity.Property(x=>x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x=>x.CreatedBy).HasMaxLength(120).IsRequired();
+            entity.HasIndex(x=>new{x.EmployeeNumber,x.HireDate}).IsUnique();
+            entity.HasIndex(x=>x.HireDate);
+        });
+        modelBuilder.Entity<TerminationEmployee>(entity =>
+        {
+            entity.ToTable("TerminationEmployees");
+            entity.HasKey(x=>x.Id);
+            entity.Property(x=>x.EmployeeNumber).HasMaxLength(50).IsRequired();
+            entity.Property(x=>x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x=>x.Department).HasMaxLength(100);
+            entity.HasIndex(x=>new{x.EmployeeNumber,x.TerminationDate}).IsUnique();
+            entity.HasIndex(x=>x.TerminationDate);
         });
     }
 }

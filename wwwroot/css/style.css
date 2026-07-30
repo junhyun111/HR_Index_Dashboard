@@ -194,6 +194,36 @@ html[data-theme="dark"] .salary-band-tooltip span,html[data-theme="dark"] .salar
 .chart-gender { grid-column: 2; grid-row: 1; }
 .chart-job { grid-column: 2; grid-row: 2; }
 .chart-tenure { grid-column: 3; grid-row: 1; }
+.movement-card { overflow: hidden; }
+.movement-card .card-head { gap: 8px; }
+.movement-add { height: 27px; padding: 0 8px; border: 1px solid #cfe0f5; border-radius: 7px; color: #3167a8; background: #eff6ff; font-size: 9px; font-weight: 800; cursor: pointer; }
+.movement-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 12px 0 9px; padding: 3px; border-radius: 8px; background: #f0f4f8; }
+.movement-tabs button { height: 28px; border: 0; border-radius: 6px; color: #718196; background: transparent; font-size: 10px; font-weight: 700; cursor: pointer; }
+.movement-tabs button.active { color: #315f9e; background: white; box-shadow: 0 2px 7px rgba(24,59,104,.08); }
+.movement-tabs span { display: inline-grid; min-width: 17px; height: 17px; place-items: center; margin-left: 3px; border-radius: 9px; color: inherit; background: #e6edf5; font-size: 9px; }
+.movement-head,.movement-row { display: grid; grid-template-columns: minmax(58px,.8fr) 75px minmax(70px,1.2fr); align-items: center; gap: 7px; }
+.movement-head { padding: 0 7px 6px; color: #8a98a9; font-size: 9px; }
+.movement-list { max-height: 146px; overflow-y: auto; border-top: 1px solid #edf1f5; }
+.movement-row { position: relative; min-height: 35px; padding: 7px; border-bottom: 1px solid #f0f3f7; color: #53667b; font-size: 10px; }
+.movement-row strong,.movement-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.movement-row strong { color: #354a62; }
+.movement-row.is-scheduled { padding-right: 26px; }
+.movement-type { display: block; margin-top: 2px; color: #4d82c5; font-size: 8px; font-weight: 700; }
+.movement-delete { position: absolute; top: 50%; right: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px; color: #a55b64; background: #fff0f1; cursor: pointer; transform: translateY(-50%); }
+.movement-empty { padding: 32px 8px; color: #95a2b2; font-size: 10px; text-align: center; }
+.scheduled-hire-dialog { width: min(560px,calc(100vw - 28px)); }
+.scheduled-hire-grid { grid-template-columns: 1fr 1fr; }
+.scheduled-hire-guide { margin: 0 0 16px; color: #718196; font-size: 11px; }
+html[data-theme="dark"] .movement-add { color:#a9cbf4; border-color:#385777; background:#233b56; }
+html[data-theme="dark"] .movement-tabs { background:#1d2d40; }
+html[data-theme="dark"] .movement-tabs button.active { color:#b9d4f4; background:#2b4058; box-shadow:none; }
+html[data-theme="dark"] .movement-tabs span { background:#344a63; }
+html[data-theme="dark"] .movement-list,html[data-theme="dark"] .movement-row { border-color:#2d4055; }
+html[data-theme="dark"] .movement-row { color:#aebed0; }
+html[data-theme="dark"] .movement-row strong { color:#dbe6f2; }
+html[data-theme="dark"] .movement-delete { color:#efabb2; background:#4b2e35; }
+html[data-theme="dark"] .scheduled-hire-guide { color:#9fb0c4; }
+@media(max-width:620px){.scheduled-hire-grid{grid-template-columns:1fr}}
 .chart-density { grid-column: 3; grid-row: 2; }
 .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .card-title { margin: 0; font-size: 14px; font-weight: 800; }
@@ -339,6 +369,7 @@ table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .employee-table .col-date { width: 115px; }
 .employee-table .col-salary { width: 140px; }
 th { padding: 12px 15px; color: #7d8b9c; background: #f8fafc; font-size: 10px; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; }
+.employee-table th { cursor: default; user-select: text; }
 td { overflow: hidden; padding: 13px 15px; border-top: 1px solid #edf1f5; color: #4a5d72; text-overflow: ellipsis; white-space: nowrap; }
 tbody tr:hover { background: #f7faff; }
 .person { display: flex; align-items: center; gap: 9px; color: var(--ink); font-weight: 700; }

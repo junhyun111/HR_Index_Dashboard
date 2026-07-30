@@ -109,6 +109,7 @@ builder.Services.AddDbContext<CommonSettingsDbContext>(options => options.UseSql
 builder.Services.AddScoped<EmployeeColumnSettingsService>();
 builder.Services.AddScoped<SalaryPositionAxisSettingsService>();
 builder.Services.AddScoped<UserAccountService>();
+builder.Services.AddScoped<EmployeeMovementService>();
 builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
@@ -243,6 +244,31 @@ await using (var scope = app.Services.CreateAsyncScope())
           Detail TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS IX_EmployeeDatabaseChanges_OccurredAtUtc ON EmployeeDatabaseChanges (OccurredAtUtc);
+        CREATE TABLE IF NOT EXISTS HireEmployees (
+          Id INTEGER NOT NULL CONSTRAINT PK_HireEmployees PRIMARY KEY AUTOINCREMENT,
+          EmployeeNumber TEXT NOT NULL,
+          Name TEXT NOT NULL,
+          Department TEXT NULL,
+          HireDate TEXT NOT NULL,
+          Source TEXT NOT NULL,
+          Status TEXT NOT NULL,
+          CreatedBy TEXT NOT NULL,
+          CreatedAtUtc TEXT NOT NULL,
+          AppliedAtUtc TEXT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_HireEmployees_EmployeeNumber_HireDate ON HireEmployees (EmployeeNumber,HireDate);
+        CREATE INDEX IF NOT EXISTS IX_HireEmployees_HireDate ON HireEmployees (HireDate);
+        CREATE TABLE IF NOT EXISTS TerminationEmployees (
+          Id INTEGER NOT NULL CONSTRAINT PK_TerminationEmployees PRIMARY KEY AUTOINCREMENT,
+          EmployeeNumber TEXT NOT NULL,
+          Name TEXT NOT NULL,
+          Department TEXT NULL,
+          TerminationDate TEXT NOT NULL,
+          SourceDatabaseDate TEXT NOT NULL,
+          SyncedAtUtc TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS IX_TerminationEmployees_EmployeeNumber_TerminationDate ON TerminationEmployees (EmployeeNumber,TerminationDate);
+        CREATE INDEX IF NOT EXISTS IX_TerminationEmployees_TerminationDate ON TerminationEmployees (TerminationDate);
         """);
     var settings=scope.ServiceProvider.GetRequiredService<EmployeeColumnSettingsService>();
     await settings.EnsureSeededAsync();
@@ -250,6 +276,31 @@ await using (var scope = app.Services.CreateAsyncScope())
     await salaryPositions.GetAsync();
     var accounts=scope.ServiceProvider.GetRequiredService<UserAccountService>();
     await accounts.EnsureAdministratorAsync();
+}
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var databases=scope.ServiceProvider.GetRequiredService<DailyEmployeeDatabaseService>();
+    var copiedDatabases=await databases.CreateMissingDatabasesThroughAsync(DateTime.Today,CancellationToken.None);
+    if(copiedDatabases.Count>0)
+    {
+        var settingsDb=scope.ServiceProvider.GetRequiredService<CommonSettingsDbContext>();
+        foreach(var item in copiedDatabases)
+        {
+            settingsDb.EmployeeDatabaseChanges.Add(new HRDashboard.Models.EmployeeDatabaseChange
+            {
+                OccurredAtUtc=DateTimeOffset.UtcNow,
+                UserName="시스템",
+                DatabaseDate=item.DatabaseDate,
+                Action="일일 DB 자동 업데이트",
+                Detail=$"{item.SourceDate:yyyy-MM-dd} DB를 {item.FileName}으로 자동 저장"
+            });
+        }
+        await settingsDb.SaveChangesAsync();
+    }
+
+    var employeeDb=scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await databases.MigrateExistingDatabaseAsync(employeeDb,CancellationToken.None);
 }
 
 await using (var scope = app.Services.CreateAsyncScope())

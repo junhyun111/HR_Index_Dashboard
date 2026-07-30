@@ -75,8 +75,10 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
                 if(File.Exists(destinationPath))
                 {
                     if(await DatabaseHasEmployeesTableAsync(destinationPath,ct))
+                    {
                         source=new KeyValuePair<DateTime,string>(date,destinationPath);
-                    continue;
+                        continue;
+                    }
                 }
 
                 await CopyDatabaseAsync(source.Value,destinationPath,source.Key,date,ct);
@@ -138,10 +140,21 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
     private static async Task CopyDatabaseAsync(string sourcePath,string destinationPath,DateTime sourceDate,DateTime targetDate,CancellationToken ct)
     {
         var temporaryPath=destinationPath+$".tmp-{Guid.NewGuid():N}";
+        var sourceConnectionString=new SqliteConnectionStringBuilder
+        {
+            DataSource=sourcePath,
+            Mode=SqliteOpenMode.ReadOnly,
+            Pooling=false
+        }.ToString();
+        var destinationConnectionString=new SqliteConnectionStringBuilder
+        {
+            DataSource=temporaryPath,
+            Pooling=false
+        }.ToString();
         try
         {
-            await using(var source=new SqliteConnection($"Data Source={sourcePath};Mode=ReadOnly"))
-            await using(var destination=new SqliteConnection($"Data Source={temporaryPath}"))
+            await using(var source=new SqliteConnection(sourceConnectionString))
+            await using(var destination=new SqliteConnection(destinationConnectionString))
             {
                 await source.OpenAsync(ct);
                 await destination.OpenAsync(ct);
@@ -190,7 +203,7 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
                 await metadata.ExecuteNonQueryAsync(ct);
                 await destination.CloseAsync();
             }
-            File.Move(temporaryPath,destinationPath);
+            File.Move(temporaryPath,destinationPath,true);
         }
         finally
         {
