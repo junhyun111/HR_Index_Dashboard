@@ -12,14 +12,16 @@ function initFilters(f){add('workplaceFilter',f.workplaces);add('deptFilter',f.d
 function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;departmentBars(d.departments);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);loadPersonnelMovements();ageTenureScatter(d.ageTenurePoints||[]);table(d.employees,d.pagination);}
 function departmentBars(a){
   if(!a.length){$('deptChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}
-  const colors=['#3978f6','#35b7ca','#38a47b','#f0a43c','#8b6fd6','#e66b7a','#20a39e','#f28e5b','#6f8ed8','#d16ba5'];
-  const labels=[...new Set(a.flatMap(x=>(x.positions||[]).map(position=>position.label)))].sort((x,y)=>x.localeCompare(y,'ko'));
-  const colorByPosition=new Map(labels.map((label,index)=>[label,colors[index%colors.length]]));
+  const segmentColor=(index,count)=>{
+    const start=[83,107,142],end=[212,220,230],ratio=count<=1?0:index/(count-1);
+    return `rgb(${start.map((value,i)=>Math.round(value+(end[i]-value)*ratio)).join(',')})`;
+  };
   const max=Math.max(1,...a.map(x=>x.value));
   $('deptChart').innerHTML=a.map(department=>{
-    const segments=(department.positions||[]).map(position=>{
+    const positions=department.positions||[];
+    const segments=positions.map((position,index)=>{
       const tooltip=`${position.label} · ${fmt.format(position.value)}명`;
-      return `<span class="position-segment" tabindex="0" role="img" aria-label="${esc(tooltip)}" data-tooltip="${esc(tooltip)}" style="width:${position.value/department.value*100}%;--segment-color:${colorByPosition.get(position.label)}"></span>`;
+      return `<span class="position-segment" tabindex="0" role="img" aria-label="${esc(tooltip)}" data-tooltip="${esc(tooltip)}" style="width:${position.value/department.value*100}%;--segment-color:${segmentColor(index,positions.length)}"></span>`;
     }).join('');
     return `<div class="bar-row department-bar-row"><span class="bar-label" title="${esc(department.label)}">${esc(department.label)}</span><div class="bar-track department-bar-track"><div class="department-bar-fill" style="width:${department.value/max*100}%">${segments}</div></div><span class="bar-number">${department.value}</span></div>`;
   }).join('');

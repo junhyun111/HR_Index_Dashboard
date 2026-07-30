@@ -34,8 +34,6 @@
             <span id="orgStatus">저장된 조직도를 불러왔습니다.</span>
           </div>
           <div class="org-actions">
-            <button class="button button-light" id="orgImportBtn">가져오기</button>
-            <button class="button button-light" id="orgExportBtn">내보내기</button>
             <button class="button button-light" id="orgResetBtn">초기 조직도</button>
             <button class="button button-light" id="orgCancelBtn" disabled>변경 취소</button>
             <button class="button button-light" id="orgPositionResetBtn">위치 초기화</button>
@@ -44,7 +42,6 @@
             <button class="button button-secondary" id="orgAddBtn">+ 조직 추가</button>
             <button class="button button-primary" id="orgSaveBtn">변경사항 저장</button>
           </div>
-          <input id="orgFileInput" type="file" accept=".json,application/json" hidden>
         </div>
         <div class="org-guide"><span>카드를 선택하면 조직명과 상위 조직을 수정할 수 있습니다.</span><span><i class="status-dot"></i> App_Data/organization.db</span></div>
         <div class="org-board card">
@@ -56,14 +53,14 @@
 
   <dialog class="org-dialog" id="orgDialog">
     <form method="dialog" id="orgForm">
-      <div class="dialog-head"><div><span class="dialog-kicker">ORGANIZATION</span><h2 id="orgDialogTitle">조직 수정</h2></div><button class="dialog-close" value="cancel" aria-label="닫기">×</button></div>
+      <div class="dialog-head"><div><span class="dialog-kicker">ORGANIZATION</span><h2 id="orgDialogTitle">조직 수정</h2></div><button class="dialog-close" id="orgDialogCloseBtn" type="button" aria-label="닫기">×</button></div>
       <label>조직명<input id="orgName" maxlength="40" required placeholder="조직명을 입력하세요"></label>
       <label>상위 조직<select id="orgParent"></select></label>
       <p class="form-error" id="orgFormError" aria-live="polite"></p>
-      <div class="dialog-actions"><button class="button button-danger" type="button" id="orgDeleteBtn">삭제</button><span></span><button class="button button-light" value="cancel">취소</button><button class="button button-primary" type="submit">적용</button></div>
+      <div class="dialog-actions"><button class="button button-danger" type="button" id="orgDeleteBtn">삭제</button><span></span><button class="button button-light" id="orgDialogCancelBtn" type="button">취소</button><button class="button button-primary" type="submit">적용</button></div>
     </form>
   </dialog>
 
-  <script src="./js/organization.js?v=20260730-react-flow-db1"></script>
+  <script src="./js/organization.js?v=20260730-org-dialog-close1"></script>
 </body>
 </html>

@@ -367,6 +367,7 @@ $('orgDeleteBtn').addEventListener('click',()=>{
   organization=organization.filter(candidate=>!descendants.has(candidate.id));normalizeSiblingOrders(oldParentId);
   $('orgDialog').close();renderOrganization();markOrganizationDirty();
 });
+['orgDialogCloseBtn','orgDialogCancelBtn'].forEach(id=>$(id).addEventListener('click',()=>$('orgDialog').close()));
 
 $('orgAddBtn').addEventListener('click',()=>{if(canEditOrganization)openOrgDialog();});
 $('orgSaveBtn').addEventListener('click',async()=>{
@@ -418,22 +419,6 @@ $('orgResetBtn').addEventListener('click',()=>{
   markOrganizationDirty('초기 조직도를 불러왔습니다. 저장하면 확정됩니다.');
 });
 
-$('orgExportBtn').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify(organization,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=url;link.download=`innodep-organization-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(url);
-});
-$('orgImportBtn').addEventListener('click',()=>{if(canEditOrganization)$('orgFileInput').click();});
-$('orgFileInput').addEventListener('change',async event=>{
-  if(!canEditOrganization){event.target.value='';return;}
-  const file=event.target.files[0];if(!file)return;
-  try{
-    const imported=JSON.parse(await file.text());
-    if(!validateOrganization(imported))throw new Error('올바른 조직도 형식이 아닙니다.');
-    organization=normalizeOrganization(imported);renderOrganization();markOrganizationDirty('조직도를 가져왔습니다. 저장하면 확정됩니다.');
-  }catch(error){alert(`가져오기 실패: ${error.message}`);}
-  finally{event.target.value='';}
-});
-
 window.addEventListener('beforeunload',event=>{if(organizationDirty){event.preventDefault();event.returnValue='';}});
 
 function updateOrganizationGuide(){
@@ -447,7 +432,7 @@ function updateOrganizationGuide(){
 }
 
 function applyOrganizationPermissions(){
-  ['orgImportBtn','orgResetBtn','orgCancelBtn','orgPositionResetBtn','orgLayoutBtn','orgFreeLayoutBtn','orgAddBtn','orgSaveBtn'].forEach(id=>$(id).hidden=!canEditOrganization);
+  ['orgResetBtn','orgCancelBtn','orgPositionResetBtn','orgLayoutBtn','orgFreeLayoutBtn','orgAddBtn','orgSaveBtn'].forEach(id=>$(id).hidden=!canEditOrganization);
   document.querySelector('.topbar .subtitle').textContent=canEditOrganization?'조직 구조를 확인하고 변경사항을 직접 관리합니다.':'조직 구조를 확인할 수 있습니다.';
   document.querySelector('.org-toolbar strong').textContent=canEditOrganization?'조직도 관리':'조직도';
   updateOrganizationGuide();$('orgStatus').textContent='서버 조직도를 불러오는 중입니다.';$('orgCancelBtn').disabled=true;
