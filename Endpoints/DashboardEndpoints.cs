@@ -152,10 +152,22 @@ public static class DashboardEndpoints
 
     private static async Task<IResult> Import(IFormFile? file, AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, CancellationToken ct)
     {
-        if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 CSV 파일을 선택하세요." });
-        if (file.Length > 10 * 1024 * 1024 || !string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
-            return Results.BadRequest(new { message = "10MB 이하의 CSV 파일만 업로드할 수 있습니다." });
-        try { await using var stream = file.OpenReadStream(); return await Apply(csv.Parse(stream,await columnSettings.HeaderAliasesAsync(ct)), db, ct); }
+        if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 Excel 또는 CSV 파일을 선택하세요." });
+        var extension=Path.GetExtension(file.FileName);
+        if (file.Length > 10 * 1024 * 1024 || !(extension.Equals(".xlsx",StringComparison.OrdinalIgnoreCase)||extension.Equals(".xlsm",StringComparison.OrdinalIgnoreCase)||extension.Equals(".xls",StringComparison.OrdinalIgnoreCase)||extension.Equals(".csv",StringComparison.OrdinalIgnoreCase)))
+            return Results.BadRequest(new { message = "10MB 이하의 .xlsx, .xlsm, .xls 또는 .csv 파일만 업로드할 수 있습니다." });
+        try
+        {
+            await using var stream=file.OpenReadStream();
+            var aliases=await columnSettings.HeaderAliasesAsync(ct);
+            var import=extension.ToLowerInvariant() switch
+            {
+                ".xlsx" or ".xlsm"=>csv.ParseExcel(stream,aliases),
+                ".xls"=>csv.ParseLegacyExcel(stream,aliases),
+                _=>csv.Parse(stream,aliases)
+            };
+            return await Apply(import,db,ct);
+        }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 

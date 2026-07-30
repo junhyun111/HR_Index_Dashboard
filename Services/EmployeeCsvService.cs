@@ -2,6 +2,8 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
+using ExcelDataReader;
 using HRDashboard.Models;
 using Microsoft.VisualBasic.FileIO;
 
@@ -33,6 +35,91 @@ public sealed class EmployeeCsvService
     }
     public EmployeeImportResult Parse(Stream stream,IReadOnlyDictionary<string,string>? headerAliases=null) { using var p=new TextFieldParser(stream,Encoding.UTF8,true,true){TextFieldType=FieldType.Delimited,HasFieldsEnclosedInQuotes=true,TrimWhiteSpace=false};p.SetDelimiters(",");return Parse(p,"CSV",headerAliases); }
     public EmployeeImportResult ParseClipboard(string text,IReadOnlyDictionary<string,string>? headerAliases=null) { if(string.IsNullOrWhiteSpace(text))throw new EmployeeCsvException("붙여넣은 표가 비어 있습니다.");using var p=new TextFieldParser(new StringReader(text)){TextFieldType=FieldType.Delimited,HasFieldsEnclosedInQuotes=true,TrimWhiteSpace=false};p.SetDelimiters("\t");return Parse(p,"붙여넣은 표",headerAliases); }
+    public EmployeeImportResult ParseExcel(Stream stream,IReadOnlyDictionary<string,string>? headerAliases=null)
+    {
+        try
+        {
+            using var archive=new ZipArchive(stream,ZipArchiveMode.Read,true);
+            if(archive.Entries.Sum(x=>x.Length)>100*1024*1024)throw new EmployeeCsvException("압축 해제된 Excel 파일이 너무 큽니다.");
+            const string spreadsheetNs="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+            XNamespace ns=spreadsheetNs;
+            var sharedEntry=archive.GetEntry("xl/sharedStrings.xml");
+            var shared=sharedEntry==null
+                ?Array.Empty<string>()
+                :LoadXml(sharedEntry).Descendants(ns+"si").Select(x=>string.Concat(x.Descendants(ns+"t").Select(t=>t.Value))).ToArray();
+            var dateStyles=ReadExcelDateStyles(archive,ns);
+            var sheetEntry=archive.Entries
+                .Where(x=>x.FullName.StartsWith("xl/worksheets/sheet",StringComparison.OrdinalIgnoreCase)&&x.FullName.EndsWith(".xml",StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x=>x.FullName,StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault()??throw new EmployeeCsvException("Excel 파일에서 워크시트를 찾을 수 없습니다.");
+            var rows=new List<string>();
+            foreach(var row in LoadXml(sheetEntry).Descendants(ns+"row"))
+            {
+                var cells=new SortedDictionary<int,string>();
+                foreach(var cell in row.Elements(ns+"c"))
+                {
+                    var reference=(string?)cell.Attribute("r")??"";
+                    var column=ExcelColumnIndex(reference);
+                    if(column<0||column>200)continue;
+                    var type=(string?)cell.Attribute("t");
+                    var value=type=="inlineStr"
+                        ?string.Concat(cell.Descendants(ns+"t").Select(x=>x.Value))
+                        :(string?)cell.Element(ns+"v")??"";
+                    if(type=="s"&&int.TryParse(value,out var sharedIndex)&&sharedIndex>=0&&sharedIndex<shared.Length)value=shared[sharedIndex];
+                    else if(type=="b")value=value=="1"?"TRUE":"FALSE";
+                    else if(type is null&&int.TryParse((string?)cell.Attribute("s"),out var styleIndex)&&dateStyles.Contains(styleIndex)
+                        &&double.TryParse(value,NumberStyles.Float,CultureInfo.InvariantCulture,out var serial))
+                        value=DateTime.FromOADate(serial).ToString("yyyy-MM-dd",CultureInfo.InvariantCulture);
+                    cells[column]=value;
+                }
+                if(cells.Count==0)continue;
+                var values=new string[cells.Keys.Max()+1];
+                foreach(var (column,value) in cells)values[column]=value;
+                rows.Add(string.Join('\t',values.Select(EscapeTab)));
+            }
+            if(rows.Count==0)throw new EmployeeCsvException("Excel 파일에 데이터가 없습니다.");
+            return ParseClipboard(string.Join(Environment.NewLine,rows),headerAliases);
+        }
+        catch(EmployeeCsvException){throw;}
+        catch(Exception e)when(e is InvalidDataException or XmlException or IOException or FormatException or ArgumentException)
+        {
+            throw new EmployeeCsvException($"Excel 파일을 읽을 수 없습니다: {e.Message}");
+        }
+    }
+    public EmployeeImportResult ParseLegacyExcel(Stream stream,IReadOnlyDictionary<string,string>? headerAliases=null)
+    {
+        try
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            using var reader=ExcelReaderFactory.CreateBinaryReader(stream,new ExcelReaderConfiguration { FallbackEncoding=Encoding.GetEncoding(1252) });
+            var rows=new List<string>();
+            while(reader.Read())
+            {
+                var values=new string[reader.FieldCount];
+                for(var column=0;column<reader.FieldCount;column++)
+                {
+                    var value=reader.GetValue(column);
+                    values[column]=value switch
+                    {
+                        null=>"",
+                        DateTime date=>date.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),
+                        double number=>number.ToString("G17",CultureInfo.InvariantCulture),
+                        float number=>number.ToString("G9",CultureInfo.InvariantCulture),
+                        IFormattable formattable=>formattable.ToString(null,CultureInfo.InvariantCulture)??"",
+                        _=>value.ToString()??""
+                    };
+                }
+                if(values.Any(x=>!string.IsNullOrWhiteSpace(x)))rows.Add(string.Join('\t',values.Select(EscapeTab)));
+            }
+            if(rows.Count==0)throw new EmployeeCsvException("Excel 파일에 데이터가 없습니다.");
+            return ParseClipboard(string.Join(Environment.NewLine,rows),headerAliases);
+        }
+        catch(EmployeeCsvException){throw;}
+        catch(Exception e)when(e is InvalidDataException or IOException or FormatException or ArgumentException or NotSupportedException)
+        {
+            throw new EmployeeCsvException($"Excel 파일을 읽을 수 없습니다: {e.Message}");
+        }
+    }
     private static EmployeeImportResult Parse(TextFieldParser parser,string source,IReadOnlyDictionary<string,string>? headerAliases)
     {
         var headers=parser.ReadFields()??throw new EmployeeCsvException($"{source}가 비어 있습니다.");if(headers.Length>0)headers[0]=headers[0].TrimStart('\uFEFF');
@@ -50,6 +137,40 @@ public sealed class EmployeeCsvService
     private static long? ParseSalary(string v,int row){if(v.Length==0)return null;v=v.Replace(",","").Replace("원","").Trim();if(long.TryParse(v,NumberStyles.Integer,CultureInfo.InvariantCulture,out var salary)&&salary>=0)return salary;throw new EmployeeCsvException($"{row}행 [연봉]: 0 이상의 원 단위 숫자를 입력하세요.");}
     private static string Date(DateTime? d)=>d?.ToString("yyyy-MM-dd")??"";
     private static string Escape(string v)=>v.IndexOfAny([',','"','\r','\n'])>=0?$"\"{v.Replace("\"","\"\"")}\"":v;
+    private static string EscapeTab(string v)=>v.IndexOfAny(['\t','"','\r','\n'])>=0?$"\"{v.Replace("\"","\"\"")}\"":v;
+    private static XDocument LoadXml(ZipArchiveEntry entry){using var input=entry.Open();return XDocument.Load(input,LoadOptions.None);}
+    private static int ExcelColumnIndex(string reference)
+    {
+        var column=0;var found=false;
+        foreach(var c in reference)
+        {
+            if(!char.IsLetter(c))break;
+            found=true;column=column*26+(char.ToUpperInvariant(c)-'A'+1);
+        }
+        return found?column-1:-1;
+    }
+    private static HashSet<int> ReadExcelDateStyles(ZipArchive archive,XNamespace ns)
+    {
+        var entry=archive.GetEntry("xl/styles.xml");
+        if(entry==null)return [];
+        var document=LoadXml(entry);
+        var customFormats=document.Descendants(ns+"numFmt")
+            .Select(x=>(Id:(int?)x.Attribute("numFmtId"),Code:(string?)x.Attribute("formatCode")))
+            .Where(x=>x.Id!=null&&x.Code!=null)
+            .ToDictionary(x=>x.Id!.Value,x=>x.Code!,EqualityComparer<int>.Default);
+        bool IsDateFormat(int id)
+        {
+            if((id>=14&&id<=22)||(id>=45&&id<=47))return true;
+            if(!customFormats.TryGetValue(id,out var code))return false;
+            var normalized=code.ToLowerInvariant();
+            return normalized.Contains('y')&&(normalized.Contains('m')||normalized.Contains('d'));
+        }
+        return document.Descendants(ns+"cellXfs").Elements(ns+"xf")
+            .Select((xf,index)=>(index,Format:(int?)xf.Attribute("numFmtId")??0))
+            .Where(x=>IsDateFormat(x.Format))
+            .Select(x=>x.index)
+            .ToHashSet();
+    }
     private static void WriteXml(ZipArchive archive,string path,Action<XmlWriter> write)
     {
         var entry=archive.CreateEntry(path,CompressionLevel.Fastest);

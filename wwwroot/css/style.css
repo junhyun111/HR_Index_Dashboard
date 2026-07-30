@@ -340,6 +340,8 @@ html[data-theme="dark"] .scheduled-hire-guide { color:#9fb0c4; }
 .paste-dialog form { padding: 24px; }
 .paste-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .paste-dialog-head h2 { margin: 3px 0 0; font-size: 20px; }
+.paste-dialog-head-actions { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+.excel-upload-button { min-width:112px; color:#315f9e; border-color:#bfd3ee; background:#eef5ff; }
 .dialog-kicker { color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
 .dialog-close { width: 32px; height: 32px; border: 0; border-radius: 7px; color: #66788d; background: #eef3f8; font-size: 20px; cursor: pointer; }
 .paste-guide { margin: 17px 0 12px; color: #617287; font-size: 12px; line-height: 1.65; }
