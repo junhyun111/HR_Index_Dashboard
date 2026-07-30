@@ -69,9 +69,13 @@
 .salary-position-actions button:hover:not(:disabled) { color:var(--blue); border-color:#b5ccf8; }
 .salary-position-actions button[data-action="delete"] { width:auto; padding:0 9px; color:#d94f61; }
 .salary-position-actions button:disabled { opacity:.3; cursor:default; }
-.account-table { min-width:900px; }
-.account-table td:nth-child(1){width:28%}.account-table td:nth-child(2){width:16%}.account-table td:nth-child(3){width:20%}
-.account-state { display:flex; align-items:center; gap:7px; color:var(--muted); white-space:nowrap; }
+.account-table { min-width:900px; table-layout:fixed; }
+.account-table th:nth-child(1),.account-table td:nth-child(1){width:28%}
+.account-table th:nth-child(2),.account-table td:nth-child(2){width:16%}
+.account-table th:nth-child(3),.account-table td:nth-child(3){width:20%}
+.account-table th:nth-child(4),.account-table td:nth-child(4){width:110px}
+.account-table th:nth-child(5),.account-table td:nth-child(5){width:130px}
+.account-state { display:flex; align-items:center; gap:7px; min-width:62px; color:var(--muted); white-space:nowrap; }
 .account-state input { width:auto; height:auto; accent-color:var(--blue); }
 .account-actions { display:flex; gap:6px; white-space:nowrap; }
 .mini-button { height:30px; padding:0 9px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:var(--field,#fff); font-size:10px; cursor:pointer; }
