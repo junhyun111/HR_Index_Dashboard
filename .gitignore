@@ -1,5 +1,6 @@
 bin/
 obj/
+node_modules/
 App_Data/*.db
 App_Data/*.db-shm
 App_Data/*.db-wal

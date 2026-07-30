@@ -1,0 +1,16 @@
+{
+  "name": "hr-index-dashboard-client",
+  "private": true,
+  "scripts": {
+    "build:organization": "node ./ClientApp/build-organization.mjs"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "3.0.0",
+    "@xyflow/react": "12.11.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1"
+  }
+}
