@@ -125,7 +125,7 @@ public static class DashboardEndpoints
 
     private static void SetEmployee(Employee x, EmployeeRequest r)
     {
-        string? T(string? v)=>string.IsNullOrWhiteSpace(v)?null:v.Trim();
+        string? T(string? v)=>string.IsNullOrWhiteSpace(v)||v.Trim()=="-"?null:v.Trim();
         x.EmployeeNumber=r.EmployeeNumber.Trim(); x.Workplace=T(r.Workplace); x.ParentDepartment=T(r.ParentDepartment); x.Department=T(r.Department);
         x.Name=T(r.Name); x.Position=T(r.Position); x.WorkShift=T(r.WorkShift); x.Duty=T(r.Duty); x.JobGroup=T(r.JobGroup);
         x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender);
@@ -271,6 +271,7 @@ public static class DashboardEndpoints
             summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,isAutomaticallyUpdated,averageAge=AverageAge(rows,referenceDate),averageAnnualSalary,averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
             departments,genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
+            educationGroups=rows.Select(x=>x.Education?.Trim()).Where(x=>!string.IsNullOrWhiteSpace(x)).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
             tenureGroups=TenureGroups(rows,referenceDate),
             annualSalaryGroups,
             salaryPositionBands,
@@ -304,7 +305,7 @@ public static class DashboardEndpoints
         return Results.Ok(new {
             filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>() },
             summary=new { totalCount=0,filteredCount=0,dataAsOf,lastModifiedAt=(DateTimeOffset?)null,isAutomaticallyUpdated=false,averageAge=(double?)null,averageAnnualSalary=(long?)null,averageTenure=(double?)null,hiresThisYear=0,terminationsThisYear=0 },
-            departments=Array.Empty<DepartmentCountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
+            departments=Array.Empty<DepartmentCountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),educationGroups=Array.Empty<CountResponse>(),
             tenureGroups=Array.Empty<CountResponse>(),annualSalaryGroups=Array.Empty<CountResponse>(),
             salaryPositionBands=SalaryPositionBands([],salaryPositionAxes),
             salaryAgeGenderBands=Array.Empty<SalaryAgeGenderBand>(),
