@@ -73,6 +73,7 @@ let organizationEditMode=false;
 let organizationFreeLayoutMode=false;
 let renderVersion=0;
 let flowRoot;
+let organizationUpdatedAt=null;
 
 function normalizeOrganization(data){
   const normalized=clone(data);
@@ -316,6 +317,26 @@ function markOrganizationDirty(message='저장되지 않은 변경사항이 있�
   $('orgSaveBtn').classList.add('has-changes');$('orgCancelBtn').disabled=false;$('sideOrgStatus').textContent='저장 필요';
 }
 
+async function requestOrganization(method='GET'){
+  const response=await fetch('/api/organization',method==='GET'?undefined:{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({items:organization})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.message||`조직도 서버 요청 실패(HTTP ${response.status})`);
+  return data;
+}
+
+function acceptServerOrganization(data){
+  if(!validateOrganization(data.items))return false;
+  organization=normalizeOrganization(data.items);
+  savedOrganization=clone(organization);
+  organizationUpdatedAt=data.updatedAtUtc||null;
+  try{localStorage.setItem(ORG_STORAGE_KEY,JSON.stringify(organization));}catch{}
+  return true;
+}
+
 $('orgForm').addEventListener('submit',event=>{
   event.preventDefault();
   if(!canEditOrganization)return;
@@ -348,15 +369,19 @@ $('orgDeleteBtn').addEventListener('click',()=>{
 });
 
 $('orgAddBtn').addEventListener('click',()=>{if(canEditOrganization)openOrgDialog();});
-$('orgSaveBtn').addEventListener('click',()=>{
+$('orgSaveBtn').addEventListener('click',async()=>{
   if(!canEditOrganization)return;
+  const button=$('orgSaveBtn');button.disabled=true;
   try{
-    localStorage.setItem(ORG_STORAGE_KEY,JSON.stringify(organization));savedOrganization=clone(organization);organizationDirty=false;
-    $('orgStatus').textContent=`저장 완료 · ${new Date().toLocaleString('ko-KR')}`;$('orgStatus').classList.remove('is-dirty');
+    $('orgStatus').textContent='서버 DB에 저장하고 있습니다.';
+    const data=await requestOrganization('PUT');
+    acceptServerOrganization(data);organizationDirty=false;
+    const savedAt=organizationUpdatedAt?new Date(organizationUpdatedAt):new Date();
+    $('orgStatus').textContent=`서버 DB 저장 완료 · ${savedAt.toLocaleString('ko-KR')}`;$('orgStatus').classList.remove('is-dirty');
     $('orgSaveBtn').classList.remove('has-changes');$('orgCancelBtn').disabled=true;$('sideOrgStatus').textContent=`${organization.length}개 조직 저장됨`;
-  }catch{
-    $('orgStatus').textContent='브라우저 저장소에 저장하지 못했습니다. 내보내기로 백업해 주세요.';$('orgStatus').classList.add('is-dirty');
-  }
+  }catch(error){
+    $('orgStatus').textContent=`서버 DB 저장 실패: ${error.message}`;$('orgStatus').classList.add('is-dirty');
+  }finally{button.disabled=false;}
 });
 
 $('orgCancelBtn').addEventListener('click',()=>{
@@ -425,7 +450,7 @@ function applyOrganizationPermissions(){
   ['orgImportBtn','orgResetBtn','orgCancelBtn','orgPositionResetBtn','orgLayoutBtn','orgFreeLayoutBtn','orgAddBtn','orgSaveBtn'].forEach(id=>$(id).hidden=!canEditOrganization);
   document.querySelector('.topbar .subtitle').textContent=canEditOrganization?'조직 구조를 확인하고 변경사항을 직접 관리합니다.':'조직 구조를 확인할 수 있습니다.';
   document.querySelector('.org-toolbar strong').textContent=canEditOrganization?'조직도 관리':'조직도';
-  updateOrganizationGuide();$('orgStatus').textContent='저장된 조직도를 불러왔습니다.';$('orgCancelBtn').disabled=true;
+  updateOrganizationGuide();$('orgStatus').textContent='서버 조직도를 불러오는 중입니다.';$('orgCancelBtn').disabled=true;
   $('sideOrgStatus').textContent=`${organization.length}개 조직 불러옴`;
 }
 
@@ -438,7 +463,28 @@ async function initializeOrganization(){
       if(session.theme)window.setDashboardTheme(session.theme);
     }
   }catch{canEditOrganization=false;}
-  applyOrganizationPermissions();renderOrganization();
+  applyOrganizationPermissions();
+  try{
+    const data=await requestOrganization();
+    if(acceptServerOrganization(data)){
+      const updated=data.updatedAtUtc?new Date(data.updatedAtUtc).toLocaleString('ko-KR'):'';
+      $('orgStatus').textContent=updated?`서버 DB 불러옴 · ${updated}`:'서버 DB에서 조직도를 불러왔습니다.';
+      $('sideOrgStatus').textContent=`${organization.length}개 조직 · 서버 DB`;
+    }else if(canEditOrganization){
+      $('orgStatus').textContent='기존 브라우저 조직도를 서버 DB로 옮기고 있습니다.';
+      const migrated=await requestOrganization('PUT');
+      acceptServerOrganization(migrated);
+      $('orgStatus').textContent='기존 조직도를 서버 DB로 옮겼습니다.';
+      $('sideOrgStatus').textContent=`${organization.length}개 조직 · 서버 DB`;
+    }else{
+      $('orgStatus').textContent='서버 조직도가 비어 있습니다. 편집 권한 사용자의 최초 접속이 필요합니다.';
+      $('sideOrgStatus').textContent='서버 DB 초기화 필요';
+    }
+  }catch(error){
+    $('orgStatus').textContent=`서버 DB 불러오기 실패 · 브라우저 백업 표시: ${error.message}`;
+    $('orgStatus').classList.add('is-dirty');$('sideOrgStatus').textContent='브라우저 백업 표시 중';
+  }
+  renderOrganization();
 }
 
 $('logoutBtn').onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.replace('/login');};

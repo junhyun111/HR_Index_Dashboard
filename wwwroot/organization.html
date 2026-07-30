@@ -18,7 +18,7 @@
     <a class="nav-item active" href="./organization.html"><span class="nav-icon">◎</span>조직 현황</a>
     <a class="nav-item" href="./management.html"><span class="nav-icon">▤</span>경영지표</a>
     <a class="nav-item" href="./settings.html"><span class="nav-icon">⚙</span>설정</a>
-      <div class="source-badge"><strong>조직도 데이터</strong><br>브라우저 로컬 저장<br><span id="sideOrgStatus">조직도 불러옴</span></div>
+      <div class="source-badge"><strong>조직도 데이터</strong><br>서버 SQLite DB<br><span id="sideOrgStatus">organization.db</span></div>
     </aside>
 
     <main>
@@ -46,7 +46,7 @@
           </div>
           <input id="orgFileInput" type="file" accept=".json,application/json" hidden>
         </div>
-        <div class="org-guide"><span>카드를 선택하면 조직명과 상위 조직을 수정할 수 있습니다.</span><span><i class="status-dot"></i> 이 브라우저에 저장</span></div>
+        <div class="org-guide"><span>카드를 선택하면 조직명과 상위 조직을 수정할 수 있습니다.</span><span><i class="status-dot"></i> App_Data/organization.db</span></div>
         <div class="org-board card">
           <div class="org-chart" id="orgChart"></div>
         </div>
@@ -64,6 +64,6 @@
     </form>
   </dialog>
 
-  <script src="./js/organization.js?v=20260730-react-flow1"></script>
+  <script src="./js/organization.js?v=20260730-react-flow-db1"></script>
 </body>
 </html>

@@ -106,10 +106,14 @@ builder.Services.AddDbContext<ManagementDbContext>(options => options.UseSqlite(
 var commonSettingsConnectionString = builder.Configuration.GetConnectionString("CommonSettings")
     ?? throw new InvalidOperationException("공통 설정 SQLite 연결 문자열이 없습니다.");
 builder.Services.AddDbContext<CommonSettingsDbContext>(options => options.UseSqlite(commonSettingsConnectionString));
+var organizationConnectionString = builder.Configuration.GetConnectionString("Organization")
+    ?? throw new InvalidOperationException("조직도 SQLite 연결 문자열이 없습니다.");
+builder.Services.AddDbContext<OrganizationDbContext>(options => options.UseSqlite(organizationConnectionString));
 builder.Services.AddScoped<EmployeeColumnSettingsService>();
 builder.Services.AddScoped<SalaryPositionAxisSettingsService>();
 builder.Services.AddScoped<UserAccountService>();
 builder.Services.AddScoped<EmployeeMovementService>();
+builder.Services.AddScoped<OrganizationService>();
 builder.Services.AddSingleton<EmployeeCsvService>();
 builder.Services.AddHttpClient<DartFinancialService>(client =>
 {
@@ -191,6 +195,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapDashboardEndpoints();
 app.MapManagementEndpoints();
 app.MapSettingsEndpoints();
+app.MapOrganizationEndpoints();
 app.MapAuthenticationEndpoints();
 
 var webRoot = app.Environment.WebRootPath;
@@ -296,6 +301,13 @@ await using (var scope = app.Services.CreateAsyncScope())
     await salaryPositions.GetAsync();
     var accounts=scope.ServiceProvider.GetRequiredService<UserAccountService>();
     await accounts.EnsureAdministratorAsync();
+}
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var organizationDb=scope.ServiceProvider.GetRequiredService<OrganizationDbContext>();
+    await organizationDb.Database.EnsureCreatedAsync();
+    await organizationDb.Database.ExecuteSqlRawAsync("PRAGMA wal_checkpoint(TRUNCATE)");
 }
 
 await using (var scope = app.Services.CreateAsyncScope())
