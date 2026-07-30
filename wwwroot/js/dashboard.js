@@ -185,7 +185,16 @@ function renderSalaryDetail(){
   else if(salaryDetailIndex===2)salaryAgeGenderBandChart(detailData.salaryAgeGenderBands||[]);
   else detailVerticalBars(detailData.annualSalaryGroups||[]);
 }
-let salaryDetailTransitioning=false,salaryDetailTransitionVersion=0;
+let salaryDetailTransitioning=false,salaryDetailTransitionVersion=0,salaryDetailLockedUntil=0,salaryDetailUnlockTimer;
+function lockSalaryDetailNavigation(){
+  salaryDetailLockedUntil=Date.now()+1300;
+  clearTimeout(salaryDetailUnlockTimer);
+  [$('salaryDetailPrev'),$('salaryDetailNext')].forEach(button=>button.disabled=true);
+  salaryDetailUnlockTimer=setTimeout(()=>{
+    if(Date.now()>=salaryDetailLockedUntil)
+      [$('salaryDetailPrev'),$('salaryDetailNext')].forEach(button=>button.disabled=false);
+  },1300);
+}
 function resetSalaryDetailTransition(){
   salaryDetailTransitionVersion++;
   const chart=$('detailChart');
@@ -196,7 +205,8 @@ function resetSalaryDetailTransition(){
   salaryDetailTransitioning=false;
 }
 async function changeSalaryDetail(direction){
-  if(salaryDetailTransitioning)return;
+  if(salaryDetailTransitioning||Date.now()<salaryDetailLockedUntil)return;
+  lockSalaryDetailNavigation();
   const chart=$('detailChart'),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
   const transitionVersion=++salaryDetailTransitionVersion;
   salaryDetailTransitioning=true;chart.classList.add('is-transitioning');

@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>INNODEP HR Index</title><script src="./js/theme.js?v=20260729-sidebar-menu4"></script><link rel="stylesheet" href="./css/style.css?v=20260730-delete-missing-red-check">
+  <title>INNODEP HR Index</title><script src="./js/theme.js?v=20260729-sidebar-menu4"></script><link rel="stylesheet" href="./css/style.css?v=20260730-dark-department-separator">
 </head>
 <body><div class="shell">
   <aside class="sidebar">
@@ -55,4 +55,4 @@
   <label class="delete-missing-option"><input id="deleteMissingEmployees" type="checkbox"><span>엑셀에 없는 인원을 DB에서 삭제합니다.</span></label>
   <div class="paste-dialog-actions"><button class="data-button" id="cancelPasteBtn" type="button">취소</button><button class="data-button data-button-primary" type="submit" id="applyPasteBtn" disabled>DB에 반영</button></div></form></dialog>
 <dialog class="detail-dialog" id="detailDialog"><div class="detail-dialog-head"><div><span class="dialog-kicker">HR DETAIL</span><h2 id="detailTitle"></h2><p id="detailDescription"></p></div><button class="dialog-close" id="closeDetailBtn" type="button" aria-label="닫기">×</button></div><div class="detail-period-toggle" id="headcountPeriodToggle" aria-label="조회 기간 단위" hidden><button class="active" type="button" data-mode="monthly" aria-pressed="true"><span>월별</span><small>최근 12개월</small></button><button type="button" data-mode="daily" aria-pressed="false"><span>일별</span><small>최근 15일</small></button></div><div class="detail-chart-shell"><div class="salary-detail-switch" id="salaryDetailSwitch" hidden><button class="salary-detail-prev" id="salaryDetailPrev" type="button" aria-label="이전 연봉 그래프">‹</button><span class="salary-detail-dots" id="salaryDetailDots" aria-label="연봉 그래프 1/3"><i class="active"></i><i></i><i></i></span><button class="salary-detail-next" id="salaryDetailNext" type="button" aria-label="다음 연봉 그래프">›</button></div><div class="detail-chart" id="detailChart"></div><div class="salary-band-tooltip" id="salaryBandTooltip" hidden></div></div></dialog>
-<script src="./js/dashboard.js?v=20260730-korean-salary-format"></script></body></html>
+<script src="./js/dashboard.js?v=20260730-salary-nav-lock"></script></body></html>
