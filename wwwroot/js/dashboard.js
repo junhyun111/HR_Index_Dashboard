@@ -41,7 +41,7 @@ function renderEmployeeProfile(employee,editing=false){
   $('primaryChartCard').classList.add('is-employee-profile');
   $('primaryChartTitle').textContent='인적사항';
   target.className=`employee-profile${editing?' is-editing':''}`;
-  action.innerHTML=canEdit?`<button class="profile-action-button" id="profileActionButton" type="${editing?'submit':'button'}" ${editing?'form="employeeProfileForm"':''}>${editing?'저장하기':'수정하기'}</button>`:'';
+  action.innerHTML=canEdit?(editing?`<span class="profile-action-group"><button class="profile-action-button profile-cancel-button" id="profileCancelButton" type="button">취소</button><button class="profile-action-button" id="profileActionButton" type="submit" form="employeeProfileForm">저장하기</button></span>`:`<button class="profile-action-button" id="profileActionButton" type="button">수정하기</button>`):'';
   const identity=`<div class="employee-profile-identity"><div class="employee-profile-avatar" aria-hidden="true">${esc(initial)}</div><div><strong>${esc(employee.name||'이름 미입력')}</strong><span>${esc(employee.department||employee.parentDepartment||'부서 미입력')} · ${esc(employee.position||'직위 미입력')}</span></div></div>`;
   if(!editing){
     target.innerHTML=`${identity}<div class="employee-profile-grid">${employeeProfileFields.map(field=>`<div class="employee-profile-item"><span>${esc(columnNames[field.key]||defaultColumnNames[field.key]||field.key)}</span><strong title="${esc(profileValue(employee,field.key))}">${esc(profileValue(employee,field.key))}</strong></div>`).join('')}</div>`;
@@ -54,6 +54,7 @@ function renderEmployeeProfile(employee,editing=false){
     return `<label class="employee-profile-field"><span>${esc(label)}${numeric?' (원)':''}</span><input name="${field.key}" type="${field.type||'text'}" value="${esc(value)}" ${field.required?'required':''} ${field.max?`maxlength="${field.max}"`:''} ${numeric?'min="0" step="1"':''}></label>`;
   }).join('')}</div><p class="employee-profile-error" id="employeeProfileError"></p></form>`;
   $('employeeProfileForm').onsubmit=event=>saveEmployeeProfile(event,employee);
+  $('profileCancelButton').onclick=()=>renderEmployeeProfile(employee,false);
 }
 async function saveEmployeeProfile(event,employee){
   event.preventDefault();

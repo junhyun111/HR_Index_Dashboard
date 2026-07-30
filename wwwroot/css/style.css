@@ -255,7 +255,9 @@ html[data-theme="dark"] .scheduled-hire-guide { color:#9fb0c4; }
 .department-bar-track { overflow: visible; }
 .department-bar-fill { display: flex; height: 100%; border-radius: inherit; transform-origin: left; animation: grow .6s ease both; }
 .is-employee-profile { overflow:hidden; }
+.profile-action-group { display:flex; align-items:center; gap:6px; }
 .profile-action-button { height:28px; padding:0 10px; border:1px solid #c7daf3; border-radius:7px; color:#3167a8; background:#eff6ff; font-size:10px; font-weight:800; cursor:pointer; }
+.profile-cancel-button { color:#66788d; border-color:#d6e0eb; background:#f7f9fc; }
 .profile-action-button:disabled { opacity:.55; cursor:default; }
 .employee-profile { max-height:550px; overflow:auto; padding-right:4px; scrollbar-gutter:stable; }
 .employee-profile-identity { display:flex; align-items:center; gap:14px; margin-bottom:18px; padding:14px; border:1px solid #e1e9f2; border-radius:12px; background:#f7faff; }
@@ -506,6 +508,7 @@ html[data-theme="dark"] td { color: #becbda; border-color: #27384c; }
 html[data-theme="dark"] tbody tr:hover { background: #1b2b3e; }
 html[data-theme="dark"] .bar-track { background: #26384d; }
 html[data-theme="dark"] .profile-action-button { color:#afd0f7; border-color:#3b5977; background:#233b56; }
+html[data-theme="dark"] .profile-cancel-button { color:#becbda; border-color:#3a4c63; background:#1b2a3d; }
 html[data-theme="dark"] .employee-profile-identity { border-color:#304359; background:#142338; }
 html[data-theme="dark"] .employee-profile-identity strong { color:#e3ecf6; }
 html[data-theme="dark"] .employee-profile-identity span { color:#9fb0c4; }
