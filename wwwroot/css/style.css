@@ -72,7 +72,7 @@ h1 { margin: 0; font-size: 26px; letter-spacing: -.04em; }
 .session-box button { height:28px; padding:0 10px; border:0; border-radius:6px; color:#496078; background:#edf2f7; font-size:10px; font-weight:700; cursor:pointer; }
 .session-box button:disabled { opacity:.5; }
 
-.filters { display: grid; grid-template-columns: 160px repeat(3, minmax(130px, 180px)) 1fr auto; gap: 10px; margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow); }
+.filters { display: grid; grid-template-columns: 160px repeat(5, minmax(100px, 150px)) 1fr auto; gap: 10px; margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow); }
 select, .search { width: 100%; height: 38px; padding: 0 12px; border: 1px solid #dbe4ef; border-radius: 8px; outline: none; color: var(--ink); background: #fbfcfe; }
 select:focus, .search:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(57,120,246,.1); }
 .reset { height: 38px; padding: 0 15px; border: 0; border-radius: 8px; color: #496078; background: #edf2f7; cursor: pointer; }

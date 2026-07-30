@@ -219,7 +219,7 @@ public static class DashboardEndpoints
         return Results.Ok(new { added, updated, deleted=missing.Length, total = import.Rows.Count });
     }
 
-    private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
+    private static async Task<IResult> Dashboard(string? workplace,string? department,string? position,string? jobGroup,string? gender,string? search,
         int page, int pageSize, HttpContext context, AppDbContext db,
         DailyEmployeeDatabaseService databases,SalaryPositionAxisSettingsService salaryPositionSettings,CancellationToken ct)
     {
@@ -233,7 +233,9 @@ public static class DashboardEndpoints
         if (!string.IsNullOrWhiteSpace(workplace)) query=query.Where(x=>x.Workplace==workplace);
         if (!string.IsNullOrWhiteSpace(department)) query=query.Where(x=>x.Department==department||x.ParentDepartment==department);
         if (!string.IsNullOrWhiteSpace(position)) query=query.Where(x=>x.Position==position);
-        if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))); }
+        if (!string.IsNullOrWhiteSpace(jobGroup)) query=query.Where(x=>x.JobGroup==jobGroup);
+        if (!string.IsNullOrWhiteSpace(gender)) query=query.Where(x=>x.Gender==gender);
+        if (!string.IsNullOrWhiteSpace(search)) { var q=search.Trim(); query=query.Where(x=>x.EmployeeNumber.Contains(q)||(x.Name!=null&&x.Name.Contains(q))||(x.Department!=null&&x.Department.Contains(q))||(x.Duty!=null&&x.Duty.Contains(q))||(x.Position!=null&&x.Position.Contains(q))||(x.JobGroup!=null&&x.JobGroup.Contains(q))||(x.Gender!=null&&x.Gender.Contains(q))); }
         var rows=await query.ToListAsync(ct); var filteredCount=rows.Count;
         var dataAsOf=databases.SelectedDate.Date;
         var referenceDate=dataAsOf;
@@ -267,7 +269,7 @@ public static class DashboardEndpoints
                 employee.MonthlyWage=null;
             }
         return Results.Ok(new {
-            filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct) },
+            filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct), jobGroups=await Values(db.Employees.Select(x=>x.JobGroup),ct), genders=await Values(db.Employees.Select(x=>x.Gender),ct) },
             summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,isAutomaticallyUpdated,averageAge=AverageAge(rows,referenceDate),averageAnnualSalary,averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
             departments,genders,
             jobGroups=rows.Select(x=>NormalizeJobGroup(x.JobGroup)).Where(x=>x!=null).GroupBy(x=>x!).Select(x=>new CountResponse(x.Key,x.Count())).OrderByDescending(x=>x.Value).ThenBy(x=>x.Label),
@@ -303,7 +305,7 @@ public static class DashboardEndpoints
     {
         var months=Enumerable.Range(1,12).Select(month=>new CountResponse($"{month}월",0)).ToArray();
         return Results.Ok(new {
-            filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>() },
+            filters=new { workplaces=Array.Empty<string>(),departments=Array.Empty<string>(),positions=Array.Empty<string>(),jobGroups=Array.Empty<string>(),genders=Array.Empty<string>() },
             summary=new { totalCount=0,filteredCount=0,dataAsOf,lastModifiedAt=(DateTimeOffset?)null,isAutomaticallyUpdated=false,averageAge=(double?)null,averageAnnualSalary=(long?)null,averageTenure=(double?)null,hiresThisYear=0,terminationsThisYear=0 },
             departments=Array.Empty<DepartmentCountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),educationGroups=Array.Empty<CountResponse>(),
             tenureGroups=Array.Empty<CountResponse>(),annualSalaryGroups=Array.Empty<CountResponse>(),
