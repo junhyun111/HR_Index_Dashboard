@@ -46,7 +46,7 @@ html[data-theme="dark"] .theme-moon { display: none; }
 .nav-icon { width: 18px; text-align: center; opacity: .9; }
 .source-badge { position: absolute; bottom: 24px; left: 22px; right: 22px; padding: 13px; border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: rgba(255,255,255,.05); color: #9db2cf; font-size: 11px; line-height: 1.55; }
 .source-badge strong { color: #e5eef9; }
-.sidebar-toggle { position:absolute; z-index:20; top:25px; right:12px; width:38px; height:38px; display:grid; align-content:center; gap:5px; padding:8px; border:1px solid transparent; border-radius:7px; color:#d8e6f6; background:transparent; box-shadow:none; cursor:pointer; transition:border-color .16s ease,background .16s ease,transform .18s ease; }
+.sidebar-toggle { position:absolute; z-index:20; top:35px; right:12px; width:38px; height:38px; display:grid; align-content:center; gap:5px; padding:8px; border:1px solid transparent; border-radius:7px; color:#d8e6f6; background:transparent; box-shadow:none; cursor:pointer; transition:border-color .16s ease,background .16s ease,transform .18s ease; }
 .sidebar-toggle span { display:block; width:100%; height:3px; border-radius:2px; background:currentColor; transition:width .18s ease,transform .18s ease; }
 .sidebar-toggle:hover { color:white; border-color:rgba(255,255,255,.18); background:rgba(255,255,255,.09); transform:translateY(-1px); }
 .sidebar-toggle:hover span:nth-child(2) { width:72%; }
@@ -55,7 +55,7 @@ html.sidebar-is-collapsed .shell { grid-template-columns:76px 1fr; }
 html.sidebar-is-collapsed .sidebar { padding-right:12px; padding-left:12px; }
 html.sidebar-is-collapsed .brand { justify-content:flex-start; margin-bottom:44px; }
 html.sidebar-is-collapsed .brand img { display:none; }
-html.sidebar-is-collapsed .sidebar-toggle { top:25px; right:auto; left:50%; width:38px; height:38px; padding:8px; transform:translateX(-50%); }
+html.sidebar-is-collapsed .sidebar-toggle { top:35px; right:auto; left:50%; width:38px; height:38px; padding:8px; transform:translateX(-50%); }
 html.sidebar-is-collapsed .sidebar-toggle:hover { transform:translate(-50%,-1px); }
 html.sidebar-is-collapsed .nav-title,
 html.sidebar-is-collapsed .source-badge { display:none; }
