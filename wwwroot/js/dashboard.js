@@ -10,7 +10,68 @@ function hasEmployeeNumberHeader(headers){return headers.some(x=>{const value=x.
 async function load(){const p=new URLSearchParams({page,pageSize});for(const [k,v] of Object.entries({workplace:$('workplaceFilter').value,department:$('deptFilter').value,position:$('positionFilter').value,jobGroup:$('jobGroupFilter').value,gender:$('genderFilter').value,search:$('searchInput').value.trim()}))if(v)p.set(k,v);try{const r=await fetch(`/api/dashboard?${p}`);if(r.status===401||r.status===403){location.replace('/login');return;}if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);const d=await r.json();await session();if(!initialized)initFilters(d.filters);render(d);updateDateStatus(d.summary.lastModifiedAt,d.summary.isAutomaticallyUpdated);$('loadState').hidden=true;$('filterArea').hidden=false;$('dashboard').hidden=false;$('sourceStatus').textContent=`${selectedDbName()} · ${fmt.format(d.summary.totalCount)}명`;}catch(e){$('loadState').querySelector('h2').textContent='데이터를 불러오지 못했습니다';$('loadMessage').textContent=e.message;}}
 async function session(){if($('employeeActions').dataset.checked)return;$('employeeActions').dataset.checked='1';const r=await fetch('/api/session');if(r.ok){const x=await r.json();canViewSalary=Boolean(x.canViewSalary);canEdit=Boolean(x.canEdit);$('sessionUser').textContent=x.userName||'로그인 사용자';$('employeeActions').hidden=!canEdit;$('addScheduledHireBtn').hidden=!canEdit;if(x.theme)window.setDashboardTheme(x.theme);}}
 function initFilters(f){add('workplaceFilter',f.workplaces);add('deptFilter',f.departments);add('positionFilter',f.positions);add('jobGroupFilter',f.jobGroups);add('genderFilter',f.genders);initialized=true;}function add(id,a){(a||[]).forEach(v=>$(id).append(new Option(v,v)));}
-function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;departmentBars(d.departments);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);pie('educationChart',d.educationGroups||[]);loadPersonnelMovements();table(d.employees,d.pagination);}
+function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;renderPrimaryPanel(d);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);pie('educationChart',d.educationGroups||[]);loadPersonnelMovements();table(d.employees,d.pagination);}
+const employeeProfileFields=[
+  {key:'workplace',max:100},{key:'parentDepartment',max:100},{key:'department',max:100},
+  {key:'employeeNumber',max:50,required:true},{key:'name',max:100},{key:'position',max:50},
+  {key:'workShift',max:50},{key:'duty',max:50},{key:'jobGroup',max:50},
+  {key:'employmentType',max:50},{key:'gender',max:20},
+  {key:'birthDate',type:'date'},{key:'hireDate',type:'date'},{key:'terminationDate',type:'date'},
+  {key:'annualSalary',type:'number'},{key:'monthlyWage',type:'number'},
+  {key:'education',max:100},{key:'schoolName',max:150},{key:'major',max:100}
+];
+function profileValue(employee,key){
+  const value=employee[key];
+  if(value==null||value==='')return '-';
+  if(key.endsWith('Date'))return String(value).slice(0,10).replaceAll('-','.');
+  if(key==='annualSalary'||key==='monthlyWage')return won(value);
+  return String(value);
+}
+function renderPrimaryPanel(data){
+  const employee=data.summary.filteredCount===1&&data.employees?.length===1?data.employees[0]:null;
+  if(employee){renderEmployeeProfile(employee);return;}
+  $('primaryChartCard').classList.remove('is-employee-profile');
+  $('primaryChartTitle').textContent='부서별 인원';
+  $('primaryChartAction').textContent='HEADCOUNT';
+  $('deptChart').className='bar-chart';
+  departmentBars(data.departments||[]);
+}
+function renderEmployeeProfile(employee,editing=false){
+  const target=$('deptChart'),action=$('primaryChartAction'),initial=(employee.name||employee.employeeNumber||'人').trim().slice(0,1);
+  $('primaryChartCard').classList.add('is-employee-profile');
+  $('primaryChartTitle').textContent='인적사항';
+  target.className=`employee-profile${editing?' is-editing':''}`;
+  action.innerHTML=canEdit?`<button class="profile-action-button" id="profileActionButton" type="${editing?'submit':'button'}" ${editing?'form="employeeProfileForm"':''}>${editing?'저장하기':'수정하기'}</button>`:'';
+  const identity=`<div class="employee-profile-identity"><div class="employee-profile-avatar" aria-hidden="true">${esc(initial)}</div><div><strong>${esc(employee.name||'이름 미입력')}</strong><span>${esc(employee.department||employee.parentDepartment||'부서 미입력')} · ${esc(employee.position||'직위 미입력')}</span></div></div>`;
+  if(!editing){
+    target.innerHTML=`${identity}<div class="employee-profile-grid">${employeeProfileFields.map(field=>`<div class="employee-profile-item"><span>${esc(columnNames[field.key]||defaultColumnNames[field.key]||field.key)}</span><strong title="${esc(profileValue(employee,field.key))}">${esc(profileValue(employee,field.key))}</strong></div>`).join('')}</div>`;
+    if(canEdit)$('profileActionButton').onclick=()=>renderEmployeeProfile(employee,true);
+    return;
+  }
+  target.innerHTML=`${identity}<form class="employee-profile-form" id="employeeProfileForm"><div class="employee-profile-grid">${employeeProfileFields.map(field=>{
+    const value=field.key.endsWith('Date')&&employee[field.key]?String(employee[field.key]).slice(0,10):(employee[field.key]??'');
+    const numeric=field.type==='number',label=columnNames[field.key]||defaultColumnNames[field.key]||field.key;
+    return `<label class="employee-profile-field"><span>${esc(label)}${numeric?' (원)':''}</span><input name="${field.key}" type="${field.type||'text'}" value="${esc(value)}" ${field.required?'required':''} ${field.max?`maxlength="${field.max}"`:''} ${numeric?'min="0" step="1"':''}></label>`;
+  }).join('')}</div><p class="employee-profile-error" id="employeeProfileError"></p></form>`;
+  $('employeeProfileForm').onsubmit=event=>saveEmployeeProfile(event,employee);
+}
+async function saveEmployeeProfile(event,employee){
+  event.preventDefault();
+  const form=event.currentTarget,button=$('profileActionButton'),data={};
+  employeeFields.forEach(name=>{const input=form.elements[name];data[name]=input?.value.trim()||null;});
+  ['annualSalary','monthlyWage'].forEach(name=>{if(data[name]!=null)data[name]=Number(data[name]);});
+  button.disabled=true;button.textContent='저장 중...';$('employeeProfileError').textContent='';
+  try{
+    const response=await fetch(`/api/employees/${employee.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(result.message||'저장하지 못했습니다.');
+    $('importStatus').textContent='인적사항을 DB에 반영했습니다.';
+    await load();
+  }catch(error){
+    $('employeeProfileError').textContent=error.message;
+    button.disabled=false;button.textContent='저장하기';
+  }
+}
 function departmentBars(a){
   if(!a.length){$('deptChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}
   const segmentColor=(index,count)=>{
