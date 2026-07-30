@@ -381,6 +381,7 @@ table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .employee-table .col-employment-type { width: 105px; }
 .employee-table .col-gender { width: 70px; }
 .employee-table .col-education { width: 110px; }
+.employee-table .col-school-name { width: 150px; }
 .employee-table .col-major { width: 150px; }
 .employee-table .col-date { width: 115px; }
 .employee-table .col-salary { width: 140px; }

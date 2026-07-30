@@ -69,12 +69,19 @@ namespace HRDashboard.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("MonthlyWage")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ParentDepartment")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Position")
                         .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SchoolName")
+                        .HasMaxLength(150)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("TerminationDate")

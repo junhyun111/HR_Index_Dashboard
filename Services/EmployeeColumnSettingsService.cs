@@ -23,12 +23,14 @@ public sealed class EmployeeColumnSettingsService(CommonSettingsDbContext db)
         new("jobGroup","직군",9),
         new("employmentType","사원구분",10),
         new("gender","성별",11),
-        new("education","최종학력",12),
-        new("major","전공",13),
-        new("birthDate","생년월일",14),
-        new("hireDate","입사일자",15),
-        new("terminationDate","퇴사일자",16),
-        new("annualSalary","연봉",17)
+        new("birthDate","생년월일",12),
+        new("hireDate","입사일자",13),
+        new("terminationDate","퇴사일자",14),
+        new("annualSalary","책정연봉",15),
+        new("monthlyWage","월임금",16),
+        new("education","최종학력",17),
+        new("schoolName","학교명",18),
+        new("major","전공",19)
     ];
 
     public async Task EnsureSeededAsync(CancellationToken ct=default)
@@ -43,6 +45,14 @@ public sealed class EmployeeColumnSettingsService(CommonSettingsDbContext db)
                 DisplayOrder=definition.Order,
                 UpdatedAtUtc=now
             });
+        var legacyAnnualSalary=await db.EmployeeColumnSettings.FirstOrDefaultAsync(
+            x=>x.ColumnKey=="annualSalary"&&x.DisplayName=="연봉",ct);
+        if(legacyAnnualSalary!=null)
+        {
+            legacyAnnualSalary.DisplayName="책정연봉";
+            legacyAnnualSalary.DisplayOrder=15;
+            legacyAnnualSalary.UpdatedAtUtc=now;
+        }
         await db.SaveChangesAsync(ct);
     }
 
@@ -121,6 +131,8 @@ public sealed class EmployeeColumnSettingsService(CommonSettingsDbContext db)
             aliases[setting.DefaultName]=setting.DefaultName;
             aliases[setting.DisplayName]=setting.DefaultName;
         }
+        // 기존 양식도 계속 업로드할 수 있도록 이전 머리글을 허용한다.
+        aliases["연봉"]="책정연봉";
         return aliases;
     }
 }

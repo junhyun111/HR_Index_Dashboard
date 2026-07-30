@@ -14,10 +14,12 @@ public sealed class Employee
     public string? JobGroup { get; set; }
     public string? EmploymentType { get; set; }
     public string? Gender { get; set; }
-    public string? Education { get; set; }
-    public string? Major { get; set; }
     public DateTime? BirthDate { get; set; }
     public DateTime? HireDate { get; set; }
     public DateTime? TerminationDate { get; set; }
     public long? AnnualSalary { get; set; }
+    public long? MonthlyWage { get; set; }
+    public string? Education { get; set; }
+    public string? SchoolName { get; set; }
+    public string? Major { get; set; }
 }

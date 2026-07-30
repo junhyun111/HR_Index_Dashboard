@@ -118,7 +118,8 @@ public static class DashboardEndpoints
     {
         if(string.IsNullOrWhiteSpace(request.EmployeeNumber)) return "사번은 필수입니다.";
         if(request.EmployeeNumber.Trim().Length>50) return "사번은 50자 이하여야 합니다.";
-        if(request.AnnualSalary<0) return "연봉은 0 이상의 원 단위 숫자여야 합니다.";
+        if(request.AnnualSalary<0) return "책정연봉은 0 이상의 원 단위 숫자여야 합니다.";
+        if(request.MonthlyWage<0) return "월임금은 0 이상의 원 단위 숫자여야 합니다.";
         return null;
     }
 
@@ -127,8 +128,10 @@ public static class DashboardEndpoints
         string? T(string? v)=>string.IsNullOrWhiteSpace(v)?null:v.Trim();
         x.EmployeeNumber=r.EmployeeNumber.Trim(); x.Workplace=T(r.Workplace); x.ParentDepartment=T(r.ParentDepartment); x.Department=T(r.Department);
         x.Name=T(r.Name); x.Position=T(r.Position); x.WorkShift=T(r.WorkShift); x.Duty=T(r.Duty); x.JobGroup=T(r.JobGroup);
-        x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender); x.Education=T(r.Education); x.Major=T(r.Major);
-        x.BirthDate=r.BirthDate; x.HireDate=r.HireDate; x.TerminationDate=r.TerminationDate; x.AnnualSalary=r.AnnualSalary;
+        x.EmploymentType=T(r.EmploymentType); x.Gender=T(r.Gender);
+        x.BirthDate=r.BirthDate; x.HireDate=r.HireDate; x.TerminationDate=r.TerminationDate;
+        x.AnnualSalary=r.AnnualSalary; x.MonthlyWage=r.MonthlyWage;
+        x.Education=T(r.Education); x.SchoolName=T(r.SchoolName); x.Major=T(r.Major);
     }
 
     private static async Task TouchEmployeeData(AppDbContext db,CancellationToken ct)
@@ -189,22 +192,24 @@ public static class DashboardEndpoints
         {
             if (!existing.TryGetValue(row.EmployeeNumber, out var x)) { x = new Employee { EmployeeNumber = row.EmployeeNumber }; db.Add(x); added++; }
             else updated++;
-            if(import.PresentHeaders.Contains("사업장")&&row.Workplace!=null)x.Workplace=row.Workplace;
-            if(import.PresentHeaders.Contains("상위부서")&&row.ParentDepartment!=null)x.ParentDepartment=row.ParentDepartment;
-            if(import.PresentHeaders.Contains("부서")&&row.Department!=null)x.Department=row.Department;
-            if(import.PresentHeaders.Contains("성명")&&row.Name!=null)x.Name=row.Name;
-            if(import.PresentHeaders.Contains("직위")&&row.Position!=null)x.Position=row.Position;
-            if(import.PresentHeaders.Contains("근무조")&&row.WorkShift!=null)x.WorkShift=row.WorkShift;
-            if(import.PresentHeaders.Contains("직책")&&row.Duty!=null)x.Duty=row.Duty;
-            if(import.PresentHeaders.Contains("직군")&&row.JobGroup!=null)x.JobGroup=row.JobGroup;
-            if(import.PresentHeaders.Contains("사원구분")&&row.EmploymentType!=null)x.EmploymentType=row.EmploymentType;
-            if(import.PresentHeaders.Contains("성별")&&row.Gender!=null)x.Gender=row.Gender;
-            if(import.PresentHeaders.Contains("최종학력")&&row.Education!=null)x.Education=row.Education;
-            if(import.PresentHeaders.Contains("전공")&&row.Major!=null)x.Major=row.Major;
-            if(import.PresentHeaders.Contains("생년월일")&&row.BirthDate!=null)x.BirthDate=row.BirthDate;
-            if(import.PresentHeaders.Contains("입사일자")&&row.HireDate!=null)x.HireDate=row.HireDate;
-            if(import.PresentHeaders.Contains("퇴사일자")&&row.TerminationDate!=null)x.TerminationDate=row.TerminationDate;
-            if(import.PresentHeaders.Contains("연봉")&&row.AnnualSalary!=null)x.AnnualSalary=row.AnnualSalary;
+            if(import.PresentHeaders.Contains("사업장"))x.Workplace=row.Workplace;
+            if(import.PresentHeaders.Contains("상위부서"))x.ParentDepartment=row.ParentDepartment;
+            if(import.PresentHeaders.Contains("부서"))x.Department=row.Department;
+            if(import.PresentHeaders.Contains("성명"))x.Name=row.Name;
+            if(import.PresentHeaders.Contains("직위"))x.Position=row.Position;
+            if(import.PresentHeaders.Contains("근무조"))x.WorkShift=row.WorkShift;
+            if(import.PresentHeaders.Contains("직책"))x.Duty=row.Duty;
+            if(import.PresentHeaders.Contains("직군"))x.JobGroup=row.JobGroup;
+            if(import.PresentHeaders.Contains("사원구분"))x.EmploymentType=row.EmploymentType;
+            if(import.PresentHeaders.Contains("성별"))x.Gender=row.Gender;
+            if(import.PresentHeaders.Contains("생년월일"))x.BirthDate=row.BirthDate;
+            if(import.PresentHeaders.Contains("입사일자"))x.HireDate=row.HireDate;
+            if(import.PresentHeaders.Contains("퇴사일자"))x.TerminationDate=row.TerminationDate;
+            if(import.PresentHeaders.Contains("책정연봉"))x.AnnualSalary=row.AnnualSalary;
+            if(import.PresentHeaders.Contains("월임금"))x.MonthlyWage=row.MonthlyWage;
+            if(import.PresentHeaders.Contains("최종학력"))x.Education=row.Education;
+            if(import.PresentHeaders.Contains("학교명"))x.SchoolName=row.SchoolName;
+            if(import.PresentHeaders.Contains("전공"))x.Major=row.Major;
         }
         await TouchEmployeeData(db,ct);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
@@ -253,7 +258,11 @@ public static class DashboardEndpoints
             .ThenBy(x=>x.Label)
             .ToArray();
         if(!canViewSalary)
-            foreach(var employee in rows)employee.AnnualSalary=null;
+            foreach(var employee in rows)
+            {
+                employee.AnnualSalary=null;
+                employee.MonthlyWage=null;
+            }
         return Results.Ok(new {
             filters=new { workplaces=await Values(db.Employees.Select(x=>x.Workplace),ct), departments=await Values(db.Employees.Select(x=>x.Department).Concat(db.Employees.Select(x=>x.ParentDepartment)),ct), positions=await Values(db.Employees.Select(x=>x.Position),ct) },
             summary=new { totalCount,filteredCount,dataAsOf,lastModifiedAt,isAutomaticallyUpdated,averageAge=AverageAge(rows,referenceDate),averageAnnualSalary,averageTenure=AverageTenure(rows,referenceDate),hiresThisYear=rows.Count(x=>x.HireDate!=null&&x.HireDate.Value.Year==referenceDate.Year&&x.HireDate.Value.Date<=referenceDate),terminationsThisYear=rows.Count(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Year==referenceDate.Year&&x.TerminationDate.Value.Date>=referenceDate) },
@@ -453,5 +462,5 @@ public static class DashboardEndpoints
     private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
     private sealed record ScheduledHireRequest(string? EmployeeNumber,string? Name,string? Department,string? Position,DateTime HireDate);
-    private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,string? Education,string? Major,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? AnnualSalary);
+    private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? AnnualSalary,long? MonthlyWage,string? Education,string? SchoolName,string? Major);
 }
