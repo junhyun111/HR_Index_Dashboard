@@ -9,3 +9,4 @@ App_Data/employee-daily/
 *.user
 *.suo
 .env
+node_modules/
