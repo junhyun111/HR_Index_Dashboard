@@ -9,7 +9,7 @@ function hasEmployeeNumberHeader(headers){return headers.some(x=>{const value=x.
 async function load(){const p=new URLSearchParams({page,pageSize});for(const [k,v] of Object.entries({workplace:$('workplaceFilter').value,department:$('deptFilter').value,position:$('positionFilter').value,search:$('searchInput').value.trim()}))if(v)p.set(k,v);try{const r=await fetch(`/api/dashboard?${p}`);if(r.status===401||r.status===403){location.replace('/login');return;}if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);const d=await r.json();await session();if(!initialized)initFilters(d.filters);render(d);updateDateStatus(d.summary.lastModifiedAt,d.summary.isAutomaticallyUpdated);$('loadState').hidden=true;$('filterArea').hidden=false;$('dashboard').hidden=false;$('sourceStatus').textContent=`${selectedDbName()} · ${fmt.format(d.summary.totalCount)}명`;}catch(e){$('loadState').querySelector('h2').textContent='데이터를 불러오지 못했습니다';$('loadMessage').textContent=e.message;}}
 async function session(){if($('employeeActions').dataset.checked)return;$('employeeActions').dataset.checked='1';const r=await fetch('/api/session');if(r.ok){const x=await r.json();canViewSalary=Boolean(x.canViewSalary);canEdit=Boolean(x.canEdit);$('sessionUser').textContent=x.userName||'로그인 사용자';$('employeeActions').hidden=!canEdit;$('addScheduledHireBtn').hidden=!canEdit;if(x.theme)window.setDashboardTheme(x.theme);}}
 function initFilters(f){add('workplaceFilter',f.workplaces);add('deptFilter',f.departments);add('positionFilter',f.positions);initialized=true;}function add(id,a){a.forEach(v=>$(id).append(new Option(v,v)));}
-function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('peopleNote').textContent=`전체의 ${s.totalCount?(s.filteredCount/s.totalCount*100).toFixed(1):0}%`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageAnnualSalaryNote').hidden=!canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;departmentBars(d.departments);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);loadPersonnelMovements();ageTenureScatter(d.ageTenurePoints||[]);table(d.employees,d.pagination);}
+function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;departmentBars(d.departments);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);loadPersonnelMovements();ageTenureScatter(d.ageTenurePoints||[]);table(d.employees,d.pagination);}
 function departmentBars(a){
   if(!a.length){$('deptChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}
   const colors=['#3978f6','#35b7ca','#38a47b','#f0a43c','#8b6fd6','#e66b7a','#20a39e','#f28e5b','#6f8ed8','#d16ba5'];
@@ -129,15 +129,31 @@ function renderSalaryDetail(){
   else if(salaryDetailIndex===2)salaryAgeGenderBandChart(detailData.salaryAgeGenderBands||[]);
   else detailVerticalBars(detailData.annualSalaryGroups||[]);
 }
-let salaryDetailTransitioning=false;
+let salaryDetailTransitioning=false,salaryDetailTransitionVersion=0;
+function resetSalaryDetailTransition(){
+  salaryDetailTransitionVersion++;
+  const chart=$('detailChart');
+  chart.getAnimations().forEach(animation=>animation.cancel());
+  chart.classList.remove('is-transitioning');
+  chart.style.removeProperty('opacity');
+  chart.style.removeProperty('transform');
+  salaryDetailTransitioning=false;
+}
 async function changeSalaryDetail(direction){
   if(salaryDetailTransitioning)return;
   const chart=$('detailChart'),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const transitionVersion=++salaryDetailTransitionVersion;
   salaryDetailTransitioning=true;chart.classList.add('is-transitioning');
-  if(!reduceMotion)await chart.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*22}px)`}],{duration:150,easing:'ease-in',fill:'forwards'}).finished;
-  salaryDetailIndex=(salaryDetailIndex+direction+3)%3;renderSalaryDetail();
-  if(!reduceMotion)await chart.animate([{opacity:0,transform:`translateX(${direction*22}px)`},{opacity:1,transform:'translateX(0)'}],{duration:220,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'}).finished;
-  chart.getAnimations().forEach(animation=>animation.cancel());chart.classList.remove('is-transitioning');salaryDetailTransitioning=false;
+  try{
+    if(!reduceMotion)await chart.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*22}px)`}],{duration:150,easing:'ease-in',fill:'forwards'}).finished;
+    if(transitionVersion!==salaryDetailTransitionVersion)return;
+    salaryDetailIndex=(salaryDetailIndex+direction+3)%3;renderSalaryDetail();
+    if(!reduceMotion)await chart.animate([{opacity:0,transform:`translateX(${direction*22}px)`},{opacity:1,transform:'translateX(0)'}],{duration:220,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'}).finished;
+  }catch(error){
+    if(transitionVersion===salaryDetailTransitionVersion&&error?.name!=='AbortError')console.warn('연봉 그래프 전환이 중단되었습니다.',error);
+  }finally{
+    if(transitionVersion===salaryDetailTransitionVersion)resetSalaryDetailTransition();
+  }
 }
 function salaryPositionBandChart(rows){
   $('detailChart').classList.add('salary-band-chart');
@@ -197,5 +213,6 @@ function openDetail(type){if(!detailData)return;if(type==='salary'&&!canViewSala
 $('salaryDetailPrev').onclick=()=>changeSalaryDetail(-1);
 $('salaryDetailNext').onclick=()=>changeSalaryDetail(1);
 document.querySelectorAll('#headcountPeriodToggle button').forEach(button=>button.onclick=()=>loadHeadcountTrend(button.dataset.mode));
-document.querySelectorAll('.kpi-clickable').forEach(card=>{card.onclick=()=>openDetail(card.dataset.detail);card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openDetail(card.dataset.detail);}};});$('closeDetailBtn').onclick=()=>{$('salaryBandTooltip').hidden=true;$('detailDialog').close();};$('detailDialog').onclick=e=>{if(e.target===$('detailDialog')){$('salaryBandTooltip').hidden=true;$('detailDialog').close();}};
+document.querySelectorAll('.kpi-clickable').forEach(card=>{card.onclick=()=>openDetail(card.dataset.detail);card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openDetail(card.dataset.detail);}};});$('closeDetailBtn').onclick=()=>{$('salaryBandTooltip').hidden=true;resetSalaryDetailTransition();$('detailDialog').close();};$('detailDialog').onclick=e=>{if(e.target===$('detailDialog')){$('salaryBandTooltip').hidden=true;resetSalaryDetailTransition();$('detailDialog').close();}};
+$('detailDialog').addEventListener('cancel',()=>{$('salaryBandTooltip').hidden=true;resetSalaryDetailTransition();});
 $('employeeDateFilter').onchange=async()=>{initialized=false;['workplaceFilter','deptFilter','positionFilter'].forEach(id=>$(id).options.length=1);$('searchInput').value='';$('importStatus').textContent='';page=1;await load();};
