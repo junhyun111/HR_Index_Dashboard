@@ -9,7 +9,7 @@ function hasEmployeeNumberHeader(headers){return headers.some(x=>{const value=x.
 async function load(){const p=new URLSearchParams({page,pageSize});for(const [k,v] of Object.entries({workplace:$('workplaceFilter').value,department:$('deptFilter').value,position:$('positionFilter').value,search:$('searchInput').value.trim()}))if(v)p.set(k,v);try{const r=await fetch(`/api/dashboard?${p}`);if(r.status===401||r.status===403){location.replace('/login');return;}if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);const d=await r.json();await session();if(!initialized)initFilters(d.filters);render(d);updateDateStatus(d.summary.lastModifiedAt,d.summary.isAutomaticallyUpdated);$('loadState').hidden=true;$('filterArea').hidden=false;$('dashboard').hidden=false;$('sourceStatus').textContent=`${selectedDbName()} · ${fmt.format(d.summary.totalCount)}명`;}catch(e){$('loadState').querySelector('h2').textContent='데이터를 불러오지 못했습니다';$('loadMessage').textContent=e.message;}}
 async function session(){if($('employeeActions').dataset.checked)return;$('employeeActions').dataset.checked='1';const r=await fetch('/api/session');if(r.ok){const x=await r.json();canViewSalary=Boolean(x.canViewSalary);canEdit=Boolean(x.canEdit);$('sessionUser').textContent=x.userName||'로그인 사용자';$('employeeActions').hidden=!canEdit;$('addScheduledHireBtn').hidden=!canEdit;if(x.theme)window.setDashboardTheme(x.theme);}}
 function initFilters(f){add('workplaceFilter',f.workplaces);add('deptFilter',f.departments);add('positionFilter',f.positions);initialized=true;}function add(id,a){a.forEach(v=>$(id).append(new Option(v,v)));}
-function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;departmentBars(d.departments);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);loadPersonnelMovements();ageTenureScatter(d.ageTenurePoints||[]);table(d.employees,d.pagination);}
+function render(d){detailData=d;const s=d.summary;$('totalPeople').innerHTML=`${fmt.format(s.filteredCount)}<span class="kpi-unit">명</span>`;$('dataAsOf').textContent=s.dataAsOf?`(${s.dataAsOf.slice(0,10).replaceAll('-','.')} 기준)`:'';$('averageAge').textContent=s.averageAge??'-';$('averageAnnualSalary').textContent=s.averageAnnualSalary==null?'-':fmt.format(s.averageAnnualSalary);$('averageAnnualSalaryValue').hidden=!canViewSalary;$('averageAnnualSalaryLocked').hidden=canViewSalary;$('averageTenure').textContent=s.averageTenure??'-';$('hiresThisYear').innerHTML=`${s.hiresThisYear}<span class="kpi-unit">명</span>`;$('terminationsThisYear').innerHTML=`${s.terminationsThisYear}<span class="kpi-unit">명</span>`;departmentBars(d.departments);pie('genderChart',Object.entries(d.genders).map(([label,value])=>({label,value})));pie('jobGroupChart',d.jobGroups);loadPersonnelMovements();table(d.employees,d.pagination);}
 function departmentBars(a){
   if(!a.length){$('deptChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}
   const segmentColor=(index,count)=>{
@@ -98,20 +98,22 @@ async function deleteScheduledHire(id){
   await loadPersonnelMovements();
 }
 function pie(id,a){const colors=['#3978f6','#35b7ca','#38a47b','#f0a43c','#8b6fd6','#e66b7a'],total=a.reduce((s,x)=>s+x.value,0);if(!total){$(id).innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}let end=0;const stops=a.map((x,i)=>{const start=end;end+=x.value/total*100;return `${colors[i%colors.length]} ${start}% ${end}%`;});$(id).innerHTML=`<div class="pie-layout"><div class="donut" style="background:conic-gradient(${stops.join(',')})"><div class="donut-center"><strong>${total}</strong><span>조회 인원</span></div></div><div class="legend">${a.map((x,i)=>`<span><i class="dot" style="background:${colors[i%colors.length]}"></i>${esc(x.label)} ${x.value}명</span>`).join('')}</div></div>`;}
-function ageTenureScatter(points){
-  const target=$('ageTenureChart');
+function ageTenureScatter(points,targetId='detailChart'){
+  const target=$(targetId);
+  target.classList.remove('salary-band-chart');
+  target.classList.add('tenure-density-detail');
   if(!points.length){target.innerHTML='<div class="chart-empty">생년월일과 입사일자 데이터가 없습니다.</div>';return;}
-  const width=360,height=205,left=35,right=9,top=10,bottom=30,plotWidth=width-left-right,plotHeight=height-top-bottom;
+  const width=680,height=380,left=58,right=24,top=24,bottom=48,plotWidth=width-left-right,plotHeight=height-top-bottom;
   let minAge=Math.floor(Math.min(...points.map(x=>x.age))/5)*5,maxAge=Math.ceil(Math.max(...points.map(x=>x.age))/5)*5;
   if(maxAge<=minAge)maxAge=minAge+5;
   const minTenure=0,maxTenure=Math.max(2,Math.ceil(Math.max(...points.map(x=>x.tenure))/2)*2);
   const xScale=value=>left+(value-minAge)/(maxAge-minAge)*plotWidth;
   const yScale=value=>top+plotHeight-(value-minTenure)/(maxTenure-minTenure)*plotHeight;
   const tickCount=4,xTicks=Array.from({length:tickCount+1},(_,i)=>minAge+(maxAge-minAge)*i/tickCount),yTicks=Array.from({length:tickCount+1},(_,i)=>minTenure+(maxTenure-minTenure)*i/tickCount);
-  target.innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="직원별 연령과 근속연수 산점도">
+  target.innerHTML=`<svg class="tenure-density-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="직원별 연령과 근속연수 산점도">
     ${xTicks.map(value=>`<line class="density-grid" x1="${xScale(value)}" y1="${top}" x2="${xScale(value)}" y2="${top+plotHeight}"></line><text class="density-tick" x="${xScale(value)}" y="${height-16}" text-anchor="middle">${Math.round(value)}</text>`).join('')}
     ${yTicks.map(value=>`<line class="density-grid" x1="${left}" y1="${yScale(value)}" x2="${width-right}" y2="${yScale(value)}"></line><text class="density-tick" x="${left-6}" y="${yScale(value)+3}" text-anchor="end">${Math.round(value)}</text>`).join('')}
-    ${points.map((point,index)=>`<circle class="density-point" style="--point-delay:${Math.min(index*12,420)}ms" cx="${xScale(point.age).toFixed(2)}" cy="${yScale(point.tenure).toFixed(2)}" r="2.35"><title>연령 ${point.age.toFixed(1)}세 · 근속 ${point.tenure.toFixed(1)}년</title></circle>`).join('')}
+    ${points.map((point,index)=>`<circle class="density-point" style="--point-delay:${Math.min(index*8,420)}ms" cx="${xScale(point.age).toFixed(2)}" cy="${yScale(point.tenure).toFixed(2)}" r="3.2"><title>연령 ${point.age.toFixed(1)}세 · 근속 ${point.tenure.toFixed(1)}년</title></circle>`).join('')}
     <line class="density-axis" x1="${left}" y1="${top+plotHeight}" x2="${width-right}" y2="${top+plotHeight}"></line><line class="density-axis" x1="${left}" y1="${top}" x2="${left}" y2="${top+plotHeight}"></line>
     <text class="density-label" x="${left+plotWidth/2}" y="${height-2}" text-anchor="middle">연령(세)</text>
     <text class="density-label" x="9" y="${top+plotHeight/2}" text-anchor="middle" transform="rotate(-90 9 ${top+plotHeight/2})">근속연수(년)</text>
@@ -177,8 +179,14 @@ $('excelUploadInput').onchange=async()=>{
   }
 };
 $('pasteForm').onsubmit=async e=>{e.preventDefault();const firstRow=$('pasteArea').value.trim().split(/\r?\n/,1)[0]?.split('\t').map(x=>x.trim())||[];if(!hasEmployeeNumberHeader(firstRow)){$('pasteSummary').textContent=`오류: Excel에서 필수 머리글인 ${columnNames.employeeNumber}을(를) 포함해 복사해 주세요.`;return;}const selected=$('employeeDateFilter').value||todayValue,displayDate=selected.replaceAll('-','.'),deleteMissing=$('deleteMissingEmployees').checked;if(!confirm(`${displayDate} 직원 현황에 ${columnNames.employeeNumber} 기준으로 반영하시겠습니까?${deleteMissing?'\n\n주의: 표에 없는 인원은 DB에서 삭제됩니다.':''}`))return;const button=$('applyPasteBtn'),originalText=button.textContent;button.disabled=true;button.dataset.loading='true';button.textContent='DB 반영 중...';$('pasteSummary').textContent='데이터를 확인하고 저장하고 있습니다.';try{const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),120000);let r;try{r=await fetch('/api/employees/paste',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('pasteArea').value,deleteMissing}),signal:controller.signal});}finally{clearTimeout(timeout);}const x=await r.json().catch(()=>({}));if(!r.ok)throw Error(x.message||`반영 실패(HTTP ${r.status})`);$('importStatus').textContent=`${selected} 반영 완료 · 수정 ${x.updated}명 / 추가 ${x.added}명${x.deleted?` / 삭제 ${x.deleted}명`:''}`;$('pasteDialog').close();initialized=false;['workplaceFilter','deptFilter','positionFilter'].forEach(id=>$(id).options.length=1);page=1;await load();}catch(e){$('pasteSummary').textContent=e.name==='AbortError'?'오류: 처리 시간이 2분을 초과했습니다. 서버 상태를 확인해 주세요.':`오류: ${e.message}`;}finally{button.textContent=originalText;delete button.dataset.loading;button.disabled=false;}};loadColumnNames().finally(load);
-function detailVerticalBars(rows){$('detailChart').classList.remove('salary-band-chart');if(!rows.length){$('detailChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}const width=680,height=330,left=18,right=18,top=35,bottom=48,plotWidth=width-left-right,plotHeight=height-top-bottom,max=Math.max(1,...rows.map(x=>x.value)),groupWidth=plotWidth/rows.length,barWidth=Math.min(46,groupWidth*.62),baseline=top+plotHeight;$('detailChart').innerHTML=`<svg class="detail-vertical-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="세로 막대 상세 그래프"><line class="detail-axis" x1="${left}" y1="${baseline}" x2="${width-right}" y2="${baseline}"></line>${rows.map((item,index)=>{const barHeight=item.value/max*plotHeight,x=left+groupWidth*index+(groupWidth-barWidth)/2,y=baseline-barHeight,center=x+barWidth/2,basis=item.basisDate?` · ${item.basisDate.slice(0,10)} 기준`:item.targetDate?' · DB 없음':'';return `<text class="detail-column-value" x="${center}" y="${Math.max(18,y-9)}" text-anchor="middle">${fmt.format(item.value)}명</text><rect class="detail-column-bar" x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="7"><title>${esc(item.label)} ${item.value}명${esc(basis)}</title></rect><text class="detail-column-label" x="${center}" y="${baseline+26}" text-anchor="middle">${esc(item.label)}</text>`;}).join('')}</svg>`;}
-let salaryDetailIndex=0;
+function detailVerticalBars(rows){$('detailChart').classList.remove('salary-band-chart','tenure-density-detail');if(!rows.length){$('detailChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}const width=680,height=330,left=18,right=18,top=35,bottom=48,plotWidth=width-left-right,plotHeight=height-top-bottom,max=Math.max(1,...rows.map(x=>x.value)),groupWidth=plotWidth/rows.length,barWidth=Math.min(46,groupWidth*.62),baseline=top+plotHeight;$('detailChart').innerHTML=`<svg class="detail-vertical-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="세로 막대 상세 그래프"><line class="detail-axis" x1="${left}" y1="${baseline}" x2="${width-right}" y2="${baseline}"></line>${rows.map((item,index)=>{const barHeight=item.value/max*plotHeight,x=left+groupWidth*index+(groupWidth-barWidth)/2,y=baseline-barHeight,center=x+barWidth/2,basis=item.basisDate?` · ${item.basisDate.slice(0,10)} 기준`:item.targetDate?' · DB 없음':'';return `<text class="detail-column-value" x="${center}" y="${Math.max(18,y-9)}" text-anchor="middle">${fmt.format(item.value)}명</text><rect class="detail-column-bar" x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="7"><title>${esc(item.label)} ${item.value}명${esc(basis)}</title></rect><text class="detail-column-label" x="${center}" y="${baseline+26}" text-anchor="middle">${esc(item.label)}</text>`;}).join('')}</svg>`;}
+let salaryDetailIndex=0,tenureDetailIndex=0,detailSwitchMode='salary';
+function renderDetailSwitchDots(label,index,count){
+  $('salaryDetailDots').setAttribute('aria-label',`${label} 그래프 ${index+1}/${count}`);
+  $('salaryDetailDots').innerHTML=Array.from({length:count},(_,dotIndex)=>`<i class="${dotIndex===index?'active':''}"></i>`).join('');
+  $('salaryDetailPrev').setAttribute('aria-label',`이전 ${label} 그래프`);
+  $('salaryDetailNext').setAttribute('aria-label',`다음 ${label} 그래프`);
+}
 function renderSalaryDetail(){
   const views=[
     {title:'연봉 구간별 인원',description:'단위: 만원 · 연봉이 입력된 인원의 분포입니다.'},
@@ -187,13 +195,25 @@ function renderSalaryDetail(){
   ];
   const view=views[salaryDetailIndex];
   $('salaryBandTooltip').hidden=true;
-  $('salaryDetailDots').setAttribute('aria-label',`연봉 그래프 ${salaryDetailIndex+1}/${views.length}`);
-  $('salaryDetailDots').querySelectorAll('i').forEach((dot,index)=>dot.classList.toggle('active',index===salaryDetailIndex));
+  renderDetailSwitchDots('연봉',salaryDetailIndex,views.length);
   $('detailTitle').textContent=view.title;
   $('detailDescription').textContent=view.description;
   if(salaryDetailIndex===1)salaryPositionBandChart(detailData.salaryPositionBands||[]);
   else if(salaryDetailIndex===2)salaryAgeGenderBandChart(detailData.salaryAgeGenderBands||[]);
   else detailVerticalBars(detailData.annualSalaryGroups||[]);
+}
+function renderTenureDetail(){
+  const views=[
+    {title:'근속연수별 인원',description:'입사일자가 입력된 인원의 근속 구간입니다.'},
+    {title:'연령·근속 분포',description:'생년월일과 입사일자가 입력된 직원의 연령과 근속연수 분포입니다.'}
+  ];
+  const view=views[tenureDetailIndex];
+  $('salaryBandTooltip').hidden=true;
+  renderDetailSwitchDots('근속연수',tenureDetailIndex,views.length);
+  $('detailTitle').textContent=view.title;
+  $('detailDescription').textContent=view.description;
+  if(tenureDetailIndex===1)ageTenureScatter(detailData.ageTenurePoints||[]);
+  else detailVerticalBars(detailData.tenureGroups||[]);
 }
 let salaryDetailTransitioning=false,salaryDetailTransitionVersion=0,salaryDetailLockedUntil=0,salaryDetailUnlockTimer;
 function lockSalaryDetailNavigation(){
@@ -223,16 +243,22 @@ async function changeSalaryDetail(direction){
   try{
     if(!reduceMotion)await chart.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*22}px)`}],{duration:150,easing:'ease-in',fill:'forwards'}).finished;
     if(transitionVersion!==salaryDetailTransitionVersion)return;
-    salaryDetailIndex=(salaryDetailIndex+direction+3)%3;renderSalaryDetail();
+    if(detailSwitchMode==='tenure'){
+      tenureDetailIndex=(tenureDetailIndex+direction+2)%2;
+      renderTenureDetail();
+    }else{
+      salaryDetailIndex=(salaryDetailIndex+direction+3)%3;
+      renderSalaryDetail();
+    }
     if(!reduceMotion)await chart.animate([{opacity:0,transform:`translateX(${direction*22}px)`},{opacity:1,transform:'translateX(0)'}],{duration:220,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'}).finished;
   }catch(error){
-    if(transitionVersion===salaryDetailTransitionVersion&&error?.name!=='AbortError')console.warn('연봉 그래프 전환이 중단되었습니다.',error);
+    if(transitionVersion===salaryDetailTransitionVersion&&error?.name!=='AbortError')console.warn('상세 그래프 전환이 중단되었습니다.',error);
   }finally{
     if(transitionVersion===salaryDetailTransitionVersion)resetSalaryDetailTransition();
   }
 }
 function salaryPositionBandChart(rows){
-  $('detailChart').classList.add('salary-band-chart');
+  $('detailChart').classList.remove('tenure-density-detail');$('detailChart').classList.add('salary-band-chart');
   if(!rows.length){$('detailChart').innerHTML='<div class="chart-empty">설정된 직위가 없습니다.</div>';return;}
   const left=62,right=18,width=Math.max(520,left+right+rows.length*78),height=350,top=30,bottom=58,plotWidth=width-left-right,plotHeight=height-top-bottom;
   const available=rows.filter(x=>x.count>0&&x.max!=null),rawMax=Math.max(0,...available.map(x=>x.max));
@@ -249,7 +275,7 @@ function salaryPositionBandChart(rows){
   bindSalaryBandTooltip();
 }
 function salaryAgeGenderBandChart(rows){
-  $('detailChart').classList.add('salary-band-chart');
+  $('detailChart').classList.remove('tenure-density-detail');$('detailChart').classList.add('salary-band-chart');
   const available=rows.filter(x=>x.count>0&&x.max!=null),ageGroups=[...new Set(rows.map(x=>x.label))];
   if(!available.length||!ageGroups.length){$('detailChart').innerHTML='<div class="chart-empty">연령대·성별 급여 데이터가 없습니다.</div>';return;}
   const left=62,right=18,width=Math.max(520,left+right+ageGroups.length*82),height=350,top=42,bottom=58,plotWidth=width-left-right,plotHeight=height-top-bottom;
@@ -285,7 +311,7 @@ function bindSalaryBandTooltip(){
 }
 let headcountRequestId=0;
 async function loadHeadcountTrend(mode){const requestId=++headcountRequestId;document.querySelectorAll('#headcountPeriodToggle button').forEach(button=>{const active=button.dataset.mode===mode;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});$('detailDescription').textContent=mode==='monthly'?'최근 12개월 · 월말 DB가 없으면 해당 월의 마지막 DB를 기준으로 표시합니다.':'최근 15일 · 해당 날짜의 DB가 없으면 0명으로 표시합니다.';$('detailChart').setAttribute('aria-busy','true');$('detailChart').innerHTML='<div class="chart-empty">인원 추이를 불러오는 중입니다.</div>';try{const r=await fetch(`/api/employees/headcount-trend?mode=${mode}`);if(!r.ok)throw Error(`서버 오류(HTTP ${r.status})`);const data=await r.json();if(requestId!==headcountRequestId)return;detailVerticalBars(data.items);}catch(e){if(requestId===headcountRequestId)$('detailChart').innerHTML=`<div class="chart-empty">${esc(e.message)}</div>`;}finally{if(requestId===headcountRequestId)$('detailChart').removeAttribute('aria-busy');}}
-function openDetail(type){if(!detailData)return;if(type==='salary'&&!canViewSalary){alert('사용자 권한이 없습니다.');return;}if(type==='headcount'){$('salaryDetailSwitch').hidden=true;$('detailTitle').textContent='조회 인원 추이';$('headcountPeriodToggle').hidden=false;$('detailDialog').showModal();loadHeadcountTrend('monthly');return;}$('headcountPeriodToggle').hidden=true;if(type==='salary'){salaryDetailIndex=0;$('salaryDetailSwitch').hidden=false;renderSalaryDetail();$('detailDialog').showModal();return;}$('salaryDetailSwitch').hidden=true;const config={age:['연령대별 인원','생년월일이 입력된 인원의 연령대 분포입니다.',detailData.ageGroups],tenure:['근속연수별 인원','입사일자가 입력된 인원의 근속 구간입니다.',detailData.tenureGroups],hires:['올해 월별 입사 인원',`${new Date().getFullYear()}년 1월부터 12월까지의 입사자 수입니다.`,detailData.monthlyHires],terminations:['올해 월별 퇴사 예정인원','오늘 이후로 예정된 퇴사자만 월별로 표시합니다.',detailData.monthlyTerminations]}[type];if(!config)return;$('detailTitle').textContent=config[0];$('detailDescription').textContent=config[1];detailVerticalBars(config[2]);$('detailDialog').showModal();}
+function openDetail(type){if(!detailData)return;if(type==='salary'&&!canViewSalary){alert('사용자 권한이 없습니다.');return;}if(type==='headcount'){$('salaryDetailSwitch').hidden=true;$('detailTitle').textContent='조회 인원 추이';$('headcountPeriodToggle').hidden=false;$('detailDialog').showModal();loadHeadcountTrend('monthly');return;}$('headcountPeriodToggle').hidden=true;if(type==='salary'){detailSwitchMode='salary';salaryDetailIndex=0;$('salaryDetailSwitch').hidden=false;renderSalaryDetail();$('detailDialog').showModal();return;}if(type==='tenure'){detailSwitchMode='tenure';tenureDetailIndex=0;$('salaryDetailSwitch').hidden=false;renderTenureDetail();$('detailDialog').showModal();return;}$('salaryDetailSwitch').hidden=true;const config={age:['연령대별 인원','생년월일이 입력된 인원의 연령대 분포입니다.',detailData.ageGroups],hires:['올해 월별 입사 인원',`${new Date().getFullYear()}년 1월부터 12월까지의 입사자 수입니다.`,detailData.monthlyHires],terminations:['올해 월별 퇴사 예정인원','오늘 이후로 예정된 퇴사자만 월별로 표시합니다.',detailData.monthlyTerminations]}[type];if(!config)return;$('detailTitle').textContent=config[0];$('detailDescription').textContent=config[1];detailVerticalBars(config[2]);$('detailDialog').showModal();}
 $('salaryDetailPrev').onclick=()=>changeSalaryDetail(-1);
 $('salaryDetailNext').onclick=()=>changeSalaryDetail(1);
 document.querySelectorAll('#headcountPeriodToggle button').forEach(button=>button.onclick=()=>loadHeadcountTrend(button.dataset.mode));

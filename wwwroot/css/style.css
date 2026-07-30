@@ -204,7 +204,7 @@ html[data-theme="dark"] .salary-band-tooltip span,html[data-theme="dark"] .salar
 .chart-compact .card-head { margin-bottom: 8px; }
 .chart-gender { grid-column: 2; grid-row: 1; }
 .chart-job { grid-column: 2; grid-row: 2; }
-.chart-tenure { grid-column: 3; grid-row: 1; }
+.chart-tenure { grid-column: 3; grid-row: 1 / 3; }
 .movement-card { overflow: hidden; }
 .movement-card .card-head { gap: 8px; }
 .movement-add { height: 27px; padding: 0 8px; border: 1px solid #cfe0f5; border-radius: 7px; color: #3167a8; background: #eff6ff; font-size: 9px; font-weight: 800; cursor: pointer; }
@@ -217,7 +217,7 @@ html[data-theme="dark"] .salary-band-tooltip span,html[data-theme="dark"] .salar
 .movement-head,.movement-row { display: grid; grid-template-columns: 75px minmax(54px,.8fr) minmax(62px,1.1fr) minmax(48px,.7fr) 20px; align-items: center; gap: 7px; }
 .movement-head { margin-right: 8px; padding: 0 7px 6px; color: #8a98a9; font-size: 9px; }
 .movement-head::after { content: ""; }
-.movement-list { max-height: 146px; overflow-y: auto; scrollbar-gutter: stable; border-top: 1px solid #edf1f5; will-change:opacity,transform; }
+.movement-list { max-height: 456px; overflow-y: auto; scrollbar-gutter: stable; border-top: 1px solid #edf1f5; will-change:opacity,transform; }
 .movement-list::-webkit-scrollbar { width: 8px; }
 .movement-row { position: relative; min-height: 35px; padding: 7px; border-bottom: 1px solid #f0f3f7; color: #53667b; font-size: 10px; }
 .movement-row strong,.movement-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -287,6 +287,8 @@ html[data-theme="dark"] .scheduled-hire-guide { color:#9fb0c4; }
 .chart-compact .chart-empty { padding: 38px 0; }
 .density-chart { width: 100%; height: 205px; }
 .density-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.tenure-density-detail { display:flex; align-items:center; justify-content:center; }
+.tenure-density-svg { display:block; width:100%; min-width:520px; max-height:100%; overflow:visible; }
 .density-axis { stroke: #cfd9e5; stroke-width: 1; }
 .density-grid { stroke: #e8eef5; stroke-width: 1; stroke-dasharray: 2 3; }
 .density-label, .density-tick { fill: #7b8a9c; font-size: 8px; }
