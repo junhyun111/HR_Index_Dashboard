@@ -131,7 +131,7 @@ async function switchMovementMode(nextMode){
   list.getAnimations().forEach(animation=>animation.cancel());
   list.style.removeProperty('opacity');list.style.removeProperty('transform');
   if(nextMode===movementMode)return;
-  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion=false;
   try{
     if(!reduceMotion)await list.animate(
       [{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*14}px)`}],
@@ -300,7 +300,7 @@ function resetSalaryDetailTransition(){
 async function changeSalaryDetail(direction){
   if(salaryDetailTransitioning||Date.now()<salaryDetailLockedUntil)return;
   lockSalaryDetailNavigation();
-  const chart=$('detailChart'),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const chart=$('detailChart'),reduceMotion=false;
   const transitionVersion=++salaryDetailTransitionVersion;
   salaryDetailTransitioning=true;chart.classList.add('is-transitioning');
   try{
