@@ -114,13 +114,20 @@ $('pasteForm').onsubmit=async e=>{e.preventDefault();const firstRow=$('pasteArea
 function detailVerticalBars(rows){$('detailChart').classList.remove('salary-band-chart');if(!rows.length){$('detailChart').innerHTML='<div class="chart-empty">조회 결과 없음</div>';return;}const width=680,height=330,left=18,right=18,top=35,bottom=48,plotWidth=width-left-right,plotHeight=height-top-bottom,max=Math.max(1,...rows.map(x=>x.value)),groupWidth=plotWidth/rows.length,barWidth=Math.min(46,groupWidth*.62),baseline=top+plotHeight;$('detailChart').innerHTML=`<svg class="detail-vertical-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="세로 막대 상세 그래프"><line class="detail-axis" x1="${left}" y1="${baseline}" x2="${width-right}" y2="${baseline}"></line>${rows.map((item,index)=>{const barHeight=item.value/max*plotHeight,x=left+groupWidth*index+(groupWidth-barWidth)/2,y=baseline-barHeight,center=x+barWidth/2,basis=item.basisDate?` · ${item.basisDate.slice(0,10)} 기준`:item.targetDate?' · DB 없음':'';return `<text class="detail-column-value" x="${center}" y="${Math.max(18,y-9)}" text-anchor="middle">${fmt.format(item.value)}명</text><rect class="detail-column-bar" x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="7"><title>${esc(item.label)} ${item.value}명${esc(basis)}</title></rect><text class="detail-column-label" x="${center}" y="${baseline+26}" text-anchor="middle">${esc(item.label)}</text>`;}).join('')}</svg>`;}
 let salaryDetailIndex=0;
 function renderSalaryDetail(){
-  const bandView=salaryDetailIndex===1;
+  const views=[
+    {title:'연봉 구간별 인원',description:'단위: 만원 · 연봉이 입력된 인원의 분포입니다.'},
+    {title:'직위별 연봉 밴드',description:'단위: 만원 · 박스는 연봉의 1~3사분위, 선은 최솟값·최댓값, ◆는 중앙값입니다.'},
+    {title:'연령대·성별 연봉 밴드',description:'단위: 만원 · 각 연령대의 남성·여성 연봉 분포이며, 점은 중앙값입니다.'}
+  ];
+  const view=views[salaryDetailIndex];
   $('salaryBandTooltip').hidden=true;
-  $('salaryDetailDots').setAttribute('aria-label',`연봉 그래프 ${salaryDetailIndex+1}/2`);
+  $('salaryDetailDots').setAttribute('aria-label',`연봉 그래프 ${salaryDetailIndex+1}/${views.length}`);
   $('salaryDetailDots').querySelectorAll('i').forEach((dot,index)=>dot.classList.toggle('active',index===salaryDetailIndex));
-  $('detailTitle').textContent=bandView?'직위별 연봉 밴드':'연봉 구간별 인원';
-  $('detailDescription').textContent=bandView?'단위: 만원 · 박스는 연봉의 1~3사분위, 선은 최솟값·최댓값, ◆는 중앙값입니다.':'단위: 만원 · 연봉이 입력된 인원의 분포입니다.';
-  if(bandView)salaryPositionBandChart(detailData.salaryPositionBands||[]);else detailVerticalBars(detailData.annualSalaryGroups||[]);
+  $('detailTitle').textContent=view.title;
+  $('detailDescription').textContent=view.description;
+  if(salaryDetailIndex===1)salaryPositionBandChart(detailData.salaryPositionBands||[]);
+  else if(salaryDetailIndex===2)salaryAgeGenderBandChart(detailData.salaryAgeGenderBands||[]);
+  else detailVerticalBars(detailData.annualSalaryGroups||[]);
 }
 let salaryDetailTransitioning=false;
 async function changeSalaryDetail(direction){
@@ -128,7 +135,7 @@ async function changeSalaryDetail(direction){
   const chart=$('detailChart'),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
   salaryDetailTransitioning=true;chart.classList.add('is-transitioning');
   if(!reduceMotion)await chart.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*22}px)`}],{duration:150,easing:'ease-in',fill:'forwards'}).finished;
-  salaryDetailIndex=salaryDetailIndex?0:1;renderSalaryDetail();
+  salaryDetailIndex=(salaryDetailIndex+direction+3)%3;renderSalaryDetail();
   if(!reduceMotion)await chart.animate([{opacity:0,transform:`translateX(${direction*22}px)`},{opacity:1,transform:'translateX(0)'}],{duration:220,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'}).finished;
   chart.getAnimations().forEach(animation=>animation.cancel());chart.classList.remove('is-transitioning');salaryDetailTransitioning=false;
 }
@@ -147,6 +154,28 @@ function salaryPositionBandChart(rows){
     return `<g class="salary-band-group" style="animation-delay:${index*70}ms" role="img" aria-label="${esc(summary)}" data-label="${esc(item.label)}" data-count="${item.count}" data-min="${item.min}" data-q1="${item.q1}" data-median="${item.median}" data-q3="${item.q3}" data-max="${item.max}"><line class="salary-band-whisker" x1="${center}" y1="${y(item.max)}" x2="${center}" y2="${y(item.min)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.max)}" x2="${center+boxWidth*.28}" y2="${y(item.max)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.min)}" x2="${center+boxWidth*.28}" y2="${y(item.min)}"></line><rect class="salary-band-box" x="${center-boxWidth/2}" y="${boxTop}" width="${boxWidth}" height="${boxHeight}" rx="3"></rect><line class="salary-band-median" x1="${center-boxWidth/2}" y1="${y(item.median)}" x2="${center+boxWidth/2}" y2="${y(item.median)}"></line><polygon class="salary-band-median-diamond" points="${diamond}"></polygon><text class="salary-band-label" x="${center}" y="${baseline+28}" text-anchor="middle">${esc(label)}</text></g>`;
   }).join('');
   $('detailChart').innerHTML=`<svg class="salary-band-svg" style="min-width:${width}px" viewBox="0 0 ${width} ${height}" role="img" aria-label="직위별 연봉 밴드 그래프"><text class="salary-band-unit" x="${left}" y="14">연봉(만원)</text>${ticks.map(value=>`<line class="salary-band-grid" x1="${left}" y1="${y(value)}" x2="${width-right}" y2="${y(value)}"></line><text class="salary-band-tick" x="${left-9}" y="${y(value)+4}" text-anchor="end">${fmt.format(Math.round(value))}</text>`).join('')}<line class="salary-band-axis" x1="${left}" y1="${baseline}" x2="${width-right}" y2="${baseline}"></line>${groups}</svg>`;
+  bindSalaryBandTooltip();
+}
+function salaryAgeGenderBandChart(rows){
+  $('detailChart').classList.add('salary-band-chart');
+  const available=rows.filter(x=>x.count>0&&x.max!=null),ageGroups=[...new Set(rows.map(x=>x.label))];
+  if(!available.length||!ageGroups.length){$('detailChart').innerHTML='<div class="chart-empty">연령대·성별 급여 데이터가 없습니다.</div>';return;}
+  const left=62,right=18,width=Math.max(520,left+right+ageGroups.length*82),height=350,top=42,bottom=58,plotWidth=width-left-right,plotHeight=height-top-bottom;
+  const rawMax=Math.max(0,...available.map(x=>x.max)),step=rawMax<=5000?1000:rawMax<=10000?2000:5000,max=Math.max(step,Math.ceil(rawMax/step)*step),baseline=top+plotHeight;
+  const y=value=>top+(max-value)/max*plotHeight,ticks=Array.from({length:6},(_,i)=>max*(5-i)/5),groupWidth=plotWidth/ageGroups.length,boxWidth=Math.min(24,groupWidth*.28);
+  const byKey=new Map(rows.map(x=>[`${x.label}-${x.gender}`,x]));
+  const groups=ageGroups.map((ageGroup,ageIndex)=>{
+    const ageCenter=left+groupWidth*(ageIndex+.5);
+    const boxes=['남성','여성'].map((gender,genderIndex)=>{
+      const item=byKey.get(`${ageGroup}-${gender}`);
+      if(!item?.count)return '';
+      const center=ageCenter+(genderIndex===0?-boxWidth*.72:boxWidth*.72),boxTop=y(item.q3),boxBottom=y(item.q1),boxHeight=Math.max(3,boxBottom-boxTop);
+      const type=gender==='남성'?'is-male':'is-female',summary=`${ageGroup} ${gender} ${item.count}명 · 최소 ${fmt.format(item.min)}만원 · Q1 ${fmt.format(item.q1)}만원 · 중앙 ${fmt.format(item.median)}만원 · Q3 ${fmt.format(item.q3)}만원 · 최대 ${fmt.format(item.max)}만원`;
+      return `<g class="salary-band-group salary-age-gender-group ${type}" style="animation-delay:${(ageIndex*2+genderIndex)*35}ms" role="img" aria-label="${esc(summary)}" data-label="${esc(ageGroup)} · ${gender}" data-count="${item.count}" data-min="${item.min}" data-q1="${item.q1}" data-median="${item.median}" data-q3="${item.q3}" data-max="${item.max}"><line class="salary-band-whisker" x1="${center}" y1="${y(item.max)}" x2="${center}" y2="${y(item.min)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.max)}" x2="${center+boxWidth*.28}" y2="${y(item.max)}"></line><line class="salary-band-whisker" x1="${center-boxWidth*.28}" y1="${y(item.min)}" x2="${center+boxWidth*.28}" y2="${y(item.min)}"></line><rect class="salary-band-box" x="${center-boxWidth/2}" y="${boxTop}" width="${boxWidth}" height="${boxHeight}" rx="3"></rect><circle class="salary-age-median-point" cx="${center}" cy="${y(item.median)}" r="4"></circle></g>`;
+    }).join('');
+    return `${boxes}<text class="salary-band-label" x="${ageCenter}" y="${baseline+28}" text-anchor="middle">${esc(ageGroup)}</text>`;
+  }).join('');
+  $('detailChart').innerHTML=`<svg class="salary-band-svg salary-age-gender-svg" style="min-width:${width}px" viewBox="0 0 ${width} ${height}" role="img" aria-label="연령대와 성별에 따른 연봉 밴드 그래프"><text class="salary-band-unit" x="${left}" y="14">연봉(만원)</text><g class="salary-age-legend" transform="translate(${Math.max(left+110,width-right-122)} 14)"><circle class="salary-age-legend-male" cx="0" cy="0" r="4"></circle><text x="8" y="4">남성</text><circle class="salary-age-legend-female" cx="50" cy="0" r="4"></circle><text x="58" y="4">여성</text></g>${ticks.map(value=>`<line class="salary-band-grid" x1="${left}" y1="${y(value)}" x2="${width-right}" y2="${y(value)}"></line><text class="salary-band-tick" x="${left-9}" y="${y(value)+4}" text-anchor="end">${fmt.format(Math.round(value))}</text>`).join('')}<line class="salary-band-axis" x1="${left}" y1="${baseline}" x2="${width-right}" y2="${baseline}"></line>${groups}</svg>`;
   bindSalaryBandTooltip();
 }
 function bindSalaryBandTooltip(){

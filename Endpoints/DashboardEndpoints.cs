@@ -224,6 +224,7 @@ public static class DashboardEndpoints
         var averageAnnualSalary=canViewSalary?AverageAnnualSalary(rows):null;
         var annualSalaryGroups=canViewSalary?AnnualSalaryGroups(rows):Array.Empty<CountResponse>();
         var salaryPositionBands=canViewSalary?SalaryPositionBands(rows,salaryPositionAxes):Array.Empty<SalaryPositionBand>();
+        var salaryAgeGenderBands=canViewSalary?SalaryAgeGenderBands(rows,referenceDate):Array.Empty<SalaryAgeGenderBand>();
         var departments=rows
             .Where(x=>!string.IsNullOrWhiteSpace(x.Department))
             .GroupBy(x=>x.Department!)
@@ -249,6 +250,7 @@ public static class DashboardEndpoints
             tenureGroups=TenureGroups(rows,referenceDate),
             annualSalaryGroups,
             salaryPositionBands,
+            salaryAgeGenderBands,
             ageGroups=AgeGroups(rows,referenceDate),
             ageTenurePoints=AgeTenurePoints(rows,referenceDate),
             monthlyHires=MonthlyDateCounts(rows.Select(x=>x.HireDate),referenceDate.Year,null,referenceDate),
@@ -281,6 +283,7 @@ public static class DashboardEndpoints
             departments=Array.Empty<DepartmentCountResponse>(),genders=new Dictionary<string,int>(),jobGroups=Array.Empty<CountResponse>(),
             tenureGroups=Array.Empty<CountResponse>(),annualSalaryGroups=Array.Empty<CountResponse>(),
             salaryPositionBands=SalaryPositionBands([],salaryPositionAxes),
+            salaryAgeGenderBands=Array.Empty<SalaryAgeGenderBand>(),
             ageGroups=Array.Empty<CountResponse>(),ageTenurePoints=Array.Empty<AgeTenurePoint>(),
             monthlyHires=months,monthlyTerminations=months,employees=Array.Empty<Employee>(),
             pagination=new {page,pageSize,pages=1,totalCount=0}
@@ -385,10 +388,56 @@ public static class DashboardEndpoints
         }).ToArray();
     }
 
+    private static SalaryAgeGenderBand[] SalaryAgeGenderBands(IEnumerable<Employee> rows,DateTime today)
+    {
+        var labels=new[]{"20세 미만","20대","30대","40대","50대","60세 이상"};
+        var employees=rows
+            .Where(x=>x.AnnualSalary!=null&&x.BirthDate!=null)
+            .Select(x=>new {
+                Age=today.Year-x.BirthDate!.Value.Year-(x.BirthDate.Value.Date>today.AddYears(-(today.Year-x.BirthDate.Value.Year))?1:0),
+                Gender=NormalizeSalaryGender(x.Gender),
+                Salary=x.AnnualSalary!.Value/10000d
+            })
+            .Where(x=>x.Age>=0&&x.Age<=100&&x.Gender!=null)
+            .Select(x=>new {
+                Group=x.Age<20?0:x.Age<30?1:x.Age<40?2:x.Age<50?3:x.Age<60?4:5,
+                x.Gender,
+                x.Salary
+            })
+            .ToArray();
+        return labels.SelectMany((label,group)=>new[]{"남성","여성"}.Select(gender=>{
+            var values=employees
+                .Where(x=>x.Group==group&&x.Gender==gender)
+                .Select(x=>x.Salary)
+                .Order()
+                .ToArray();
+            if(values.Length==0)return new SalaryAgeGenderBand(label,gender,0,null,null,null,null,null);
+            double Q(double percentile)
+            {
+                var index=(values.Length-1)*percentile;
+                var lower=(int)Math.Floor(index);
+                var upper=(int)Math.Ceiling(index);
+                return values[lower]+(values[upper]-values[lower])*(index-lower);
+            }
+            double R(double value)=>Math.Round(value,1);
+            return new SalaryAgeGenderBand(label,gender,values.Length,R(values[0]),R(Q(.25)),R(Q(.5)),R(Q(.75)),R(values[^1]));
+        })).ToArray();
+    }
+
+    private static string? NormalizeSalaryGender(string? value)
+    {
+        if(string.IsNullOrWhiteSpace(value))return null;
+        var gender=value.Trim();
+        if(gender.StartsWith("남",StringComparison.OrdinalIgnoreCase)||gender.Equals("M",StringComparison.OrdinalIgnoreCase)||gender.Equals("Male",StringComparison.OrdinalIgnoreCase))return "남성";
+        if(gender.StartsWith("여",StringComparison.OrdinalIgnoreCase)||gender.Equals("F",StringComparison.OrdinalIgnoreCase)||gender.Equals("Female",StringComparison.OrdinalIgnoreCase))return "여성";
+        return null;
+    }
+
     private static async Task<string[]> Values(IQueryable<string?> q,CancellationToken ct)=>await q.Where(x=>x!=null&&x!="").Select(x=>x!).Distinct().Order().ToArrayAsync(ct);
     private sealed record CountResponse(string Label,int Value);
     private sealed record DepartmentCountResponse(string Label,int Value,IReadOnlyList<CountResponse> Positions);
     private sealed record SalaryPositionBand(string Label,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max,double? Average);
+    private sealed record SalaryAgeGenderBand(string Label,string Gender,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max);
     private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
     private sealed record ScheduledHireRequest(string? EmployeeNumber,string? Name,string? Department,string? Position,DateTime HireDate);
