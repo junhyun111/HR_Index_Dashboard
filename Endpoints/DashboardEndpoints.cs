@@ -153,7 +153,7 @@ public static class DashboardEndpoints
         return Results.File(csv.ExportExcel(rows,displayNames), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"hr-employees-{databases.SelectedDate:yyyy-MM-dd}.xlsx");
     }
 
-    private static async Task<IResult> Import(IFormFile? file, AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, CancellationToken ct)
+    private static async Task<IResult> Import(IFormFile? file, bool deleteMissing, AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, CancellationToken ct)
     {
         if (file is null || file.Length == 0) return Results.BadRequest(new { message = "업로드할 Excel 또는 CSV 파일을 선택하세요." });
         var extension=Path.GetExtension(file.FileName);
@@ -169,7 +169,7 @@ public static class DashboardEndpoints
                 ".xls"=>csv.ParseLegacyExcel(stream,aliases),
                 _=>csv.Parse(stream,aliases)
             };
-            return await Apply(import,db,ct);
+            return await Apply(import,deleteMissing,db,ct);
         }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
@@ -177,17 +177,20 @@ public static class DashboardEndpoints
     private static async Task<IResult> Paste(EmployeePasteRequest request, AppDbContext db, EmployeeCsvService csv, EmployeeColumnSettingsService columnSettings, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Text)) return Results.BadRequest(new { message = "붙여넣은 표가 비어 있습니다." });
-        try { return await Apply(csv.ParseClipboard(request.Text,await columnSettings.HeaderAliasesAsync(ct)), db, ct); }
+        try { return await Apply(csv.ParseClipboard(request.Text,await columnSettings.HeaderAliasesAsync(ct)),request.DeleteMissing,db,ct); }
         catch (EmployeeCsvException e) { return Results.BadRequest(new { message = e.Message }); }
     }
 
-    private static async Task<IResult> Apply(EmployeeImportResult import, AppDbContext db, CancellationToken ct)
+    private static async Task<IResult> Apply(EmployeeImportResult import,bool deleteMissing,AppDbContext db,CancellationToken ct)
     {
         // 날짜별 DB를 한 번만 읽어 대량 IN 절과 SQLite 매개변수 제한을 피한다.
         var saved = await db.Employees.ToListAsync(ct);
         var existing = saved.ToDictionary(x => x.EmployeeNumber, StringComparer.OrdinalIgnoreCase);
+        var importedNumbers=import.Rows.Select(x=>x.EmployeeNumber).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missing=deleteMissing?saved.Where(x=>!importedNumbers.Contains(x.EmployeeNumber)).ToArray():[];
         var added = 0; var updated = 0;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        if(missing.Length>0)db.Employees.RemoveRange(missing);
         foreach (var row in import.Rows)
         {
             if (!existing.TryGetValue(row.EmployeeNumber, out var x)) { x = new Employee { EmployeeNumber = row.EmployeeNumber }; db.Add(x); added++; }
@@ -213,7 +216,7 @@ public static class DashboardEndpoints
         }
         await TouchEmployeeData(db,ct);
         await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
-        return Results.Ok(new { added, updated, total = import.Rows.Count });
+        return Results.Ok(new { added, updated, deleted=missing.Length, total = import.Rows.Count });
     }
 
     private static async Task<IResult> Dashboard(string? workplace, string? department, string? position, string? search,
@@ -460,7 +463,7 @@ public static class DashboardEndpoints
     private sealed record SalaryPositionBand(string Label,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max,double? Average);
     private sealed record SalaryAgeGenderBand(string Label,string Gender,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max);
     private sealed record AgeTenurePoint(double Age,double Tenure);
-    private sealed record EmployeePasteRequest(string Text);
+    private sealed record EmployeePasteRequest(string Text,bool DeleteMissing);
     private sealed record ScheduledHireRequest(string? EmployeeNumber,string? Name,string? Department,string? Position,DateTime HireDate);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? AnnualSalary,long? MonthlyWage,string? Education,string? SchoolName,string? Major);
 }

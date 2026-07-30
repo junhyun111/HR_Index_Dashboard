@@ -350,6 +350,8 @@ html[data-theme="dark"] .scheduled-hire-guide { color:#9fb0c4; }
 #pasteArea { width: 100%; min-height: 330px; resize: vertical; padding: 14px; border: 1px solid #d7e1ed; border-radius: 9px; outline: none; color: #30455d; background: #f9fbfd; font: 12px/1.55 Consolas, monospace; white-space: pre; }
 #pasteArea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(57,120,246,.1); }
 .paste-summary { min-height: 18px; margin: 9px 0 0; color: var(--muted); font-size: 11px; white-space: pre-line; }
+.delete-missing-option { display:flex; align-items:center; width:max-content; max-width:100%; gap:8px; margin-top:10px; color:#566b83; font-size:12px; cursor:pointer; user-select:none; }
+.delete-missing-option input { width:16px; height:16px; margin:0; accent-color:#4f8df7; cursor:pointer; }
 .sync-delete-option { display: flex; align-items: flex-start; gap: 9px; margin-top: 10px; padding: 11px 12px; border: 1px solid #f0d2d2; border-radius: 8px; color: #6b4650; background: #fff8f8; font-size: 11px; cursor: pointer; }
 .sync-delete-option input { margin-top: 2px; accent-color: #d94b4b; }
 .sync-delete-option span { display: grid; gap: 3px; }
@@ -507,6 +509,7 @@ html[data-theme="dark"] .chart-empty,
 html[data-theme="dark"] .table-empty { color:#aebdce; }
 html[data-theme="dark"] .employee-form-grid label,
 html[data-theme="dark"] .paste-guide { color:#c2cedc; }
+html[data-theme="dark"] .delete-missing-option { color:#c2cedc; }
 html[data-theme="dark"] .histogram,
 html[data-theme="dark"] .table-head,
 html[data-theme="dark"] .pagination,
