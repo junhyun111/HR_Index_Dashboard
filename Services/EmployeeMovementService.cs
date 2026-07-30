@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HRDashboard.Services;
 
-public sealed record EmployeeMovementItem(long Id,string Name,DateTime Date,string? Department,string Type,bool CanDelete);
+public sealed record EmployeeMovementItem(long Id,string Name,DateTime Date,string? Department,string? Position,string Type,bool CanDelete);
 public sealed record EmployeeMovementResponse(
     IReadOnlyList<EmployeeMovementItem> Hires,
     IReadOnlyList<EmployeeMovementItem> Terminations);
@@ -29,6 +29,7 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
             {
                 existing.Name=employee.Name?.Trim()??existing.Name;
                 existing.Department=employee.Department?.Trim();
+                existing.Position=employee.Position?.Trim();
                 existing.Status="Completed";
                 existing.AppliedAtUtc??=DateTimeOffset.UtcNow;
                 continue;
@@ -38,6 +39,7 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
                 EmployeeNumber=employee.EmployeeNumber,
                 Name=employee.Name?.Trim()??employee.EmployeeNumber,
                 Department=employee.Department?.Trim(),
+                Position=employee.Position?.Trim(),
                 HireDate=hireDate,
                 Source="EmployeeDatabase",
                 Status="Completed",
@@ -73,6 +75,7 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
             {
                 existing.Name=employee.Name?.Trim()??existing.Name;
                 existing.Department=employee.Department?.Trim();
+                existing.Position=employee.Position?.Trim();
                 existing.SourceDatabaseDate=sourceDate.Date;
                 existing.SyncedAtUtc=DateTimeOffset.UtcNow;
                 continue;
@@ -82,6 +85,7 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
                 EmployeeNumber=employee.EmployeeNumber,
                 Name=employee.Name?.Trim()??employee.EmployeeNumber,
                 Department=employee.Department?.Trim(),
+                Position=employee.Position?.Trim(),
                 TerminationDate=terminationDate,
                 SourceDatabaseDate=sourceDate.Date,
                 SyncedAtUtc=DateTimeOffset.UtcNow
@@ -101,23 +105,24 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
             .OrderByDescending(x=>x.Status=="Scheduled")
             .ThenByDescending(x=>x.HireDate)
             .ThenBy(x=>x.Name)
-            .Select(x=>new EmployeeMovementItem(x.Id,x.Name,x.HireDate,x.Department,
+            .Select(x=>new EmployeeMovementItem(x.Id,x.Name,x.HireDate,x.Department,x.Position,
                 x.Status=="Scheduled"?"입사예정자":"입사자",x.Status=="Scheduled"))
             .ToListAsync(ct);
         var terminations=await movementsDb.TerminationEmployees.AsNoTracking()
             .Where(x=>x.TerminationDate>=today&&x.TerminationDate<=terminationThrough)
             .OrderBy(x=>x.TerminationDate).ThenBy(x=>x.Name)
-            .Select(x=>new EmployeeMovementItem(x.Id,x.Name,x.TerminationDate,x.Department,"퇴사예정자",false))
+            .Select(x=>new EmployeeMovementItem(x.Id,x.Name,x.TerminationDate,x.Department,x.Position,"퇴사예정자",false))
             .ToListAsync(ct);
         return new EmployeeMovementResponse(hires,terminations);
     }
 
     public async Task<HireEmployee> AddScheduledHireAsync(
-        string employeeNumber,string name,string? department,DateTime hireDate,string createdBy,CancellationToken ct)
+        string employeeNumber,string name,string? department,string? position,DateTime hireDate,string createdBy,CancellationToken ct)
     {
         employeeNumber=employeeNumber.Trim();
         name=name.Trim();
         department=string.IsNullOrWhiteSpace(department)?null:department.Trim();
+        position=string.IsNullOrWhiteSpace(position)?null:position.Trim();
         hireDate=hireDate.Date;
         if(employeeNumber.Length==0)throw new ArgumentException("사번을 입력해 주세요.");
         if(name.Length==0)throw new ArgumentException("이름을 입력해 주세요.");
@@ -129,6 +134,7 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
             EmployeeNumber=employeeNumber,
             Name=name,
             Department=department,
+            Position=position,
             HireDate=hireDate,
             Source="User",
             Status="Scheduled",
@@ -169,6 +175,7 @@ public sealed class EmployeeMovementService(CommonSettingsDbContext movementsDb)
                     EmployeeNumber=item.EmployeeNumber,
                     Name=item.Name,
                     Department=item.Department,
+                    Position=item.Position,
                     HireDate=item.HireDate
                 });
                 applied++;

@@ -6,6 +6,7 @@ public sealed class HireEmployee
     public required string EmployeeNumber { get; set; }
     public required string Name { get; set; }
     public string? Department { get; set; }
+    public string? Position { get; set; }
     public DateTime HireDate { get; set; }
     public required string Source { get; set; }
     public required string Status { get; set; }

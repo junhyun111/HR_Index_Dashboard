@@ -45,7 +45,7 @@ function renderPersonnelMovements(){
     $(id).classList.toggle('active',active);
     $(id).setAttribute('aria-selected',String(active));
   });
-  $('movementList').innerHTML=rows.length?rows.map(item=>`<div class="movement-row ${item.canDelete?'is-scheduled':''}"><strong title="${esc(item.name)}">${esc(item.name)}${item.type==='입사예정자'?'<small class="movement-type">입사예정자</small>':''}</strong><span>${item.date.slice(0,10).replaceAll('-','.')}</span><span title="${esc(item.department||'-')}">${esc(item.department||'-')}</span>${item.canDelete&&canEdit?`<button class="movement-delete" type="button" data-id="${item.id}" aria-label="${esc(item.name)} 입사예정 취소">×</button>`:''}</div>`).join(''):'<div class="movement-empty">해당 기간의 인원이 없습니다.</div>';
+  $('movementList').innerHTML=rows.length?rows.map(item=>`<div class="movement-row ${item.canDelete?'is-scheduled':''}"><span>${item.date.slice(0,10).replaceAll('-','.')}</span><strong title="${esc(item.name)}">${esc(item.name)}${item.type==='입사예정자'?'<small class="movement-type">입사예정자</small>':''}</strong><span title="${esc(item.department||'-')}">${esc(item.department||'-')}</span><span title="${esc(item.position||'-')}">${esc(item.position||'-')}</span>${item.canDelete&&canEdit?`<button class="movement-delete" type="button" data-id="${item.id}" aria-label="${esc(item.name)} 입사예정 취소">×</button>`:''}</div>`).join(''):'<div class="movement-empty">해당 기간의 인원이 없습니다.</div>';
   $('movementList').querySelectorAll('.movement-delete').forEach(button=>button.onclick=()=>deleteScheduledHire(Number(button.dataset.id)));
 }
 async function deleteScheduledHire(id){

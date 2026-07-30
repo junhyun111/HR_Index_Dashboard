@@ -55,6 +55,7 @@ public sealed class CommonSettingsDbContext(DbContextOptions<CommonSettingsDbCon
             entity.Property(x=>x.EmployeeNumber).HasMaxLength(50).IsRequired();
             entity.Property(x=>x.Name).HasMaxLength(100).IsRequired();
             entity.Property(x=>x.Department).HasMaxLength(100);
+            entity.Property(x=>x.Position).HasMaxLength(50);
             entity.Property(x=>x.Source).HasMaxLength(30).IsRequired();
             entity.Property(x=>x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x=>x.CreatedBy).HasMaxLength(120).IsRequired();
@@ -68,6 +69,7 @@ public sealed class CommonSettingsDbContext(DbContextOptions<CommonSettingsDbCon
             entity.Property(x=>x.EmployeeNumber).HasMaxLength(50).IsRequired();
             entity.Property(x=>x.Name).HasMaxLength(100).IsRequired();
             entity.Property(x=>x.Department).HasMaxLength(100);
+            entity.Property(x=>x.Position).HasMaxLength(50);
             entity.HasIndex(x=>new{x.EmployeeNumber,x.TerminationDate}).IsUnique();
             entity.HasIndex(x=>x.TerminationDate);
         });

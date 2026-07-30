@@ -60,7 +60,7 @@ public static class DashboardEndpoints
         try
         {
             var item=await movements.AddScheduledHireAsync(
-                request.EmployeeNumber??"",request.Name??"",request.Department,request.HireDate,
+                request.EmployeeNumber??"",request.Name??"",request.Department,request.Position,request.HireDate,
                 context.User.Identity?.Name??"알 수 없음",ct);
             return Results.Created($"/api/personnel-movements/hires/{item.Id}",item);
         }
@@ -391,6 +391,6 @@ public static class DashboardEndpoints
     private sealed record SalaryPositionBand(string Label,int Count,double? Min,double? Q1,double? Median,double? Q3,double? Max,double? Average);
     private sealed record AgeTenurePoint(double Age,double Tenure);
     private sealed record EmployeePasteRequest(string Text);
-    private sealed record ScheduledHireRequest(string? EmployeeNumber,string? Name,string? Department,DateTime HireDate);
+    private sealed record ScheduledHireRequest(string? EmployeeNumber,string? Name,string? Department,string? Position,DateTime HireDate);
     private sealed record EmployeeRequest(string EmployeeNumber,string? Workplace,string? ParentDepartment,string? Department,string? Name,string? Position,string? WorkShift,string? Duty,string? JobGroup,string? EmploymentType,string? Gender,string? Education,string? Major,DateTime? BirthDate,DateTime? HireDate,DateTime? TerminationDate,long? AnnualSalary);
 }

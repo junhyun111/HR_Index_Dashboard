@@ -249,6 +249,7 @@ await using (var scope = app.Services.CreateAsyncScope())
           EmployeeNumber TEXT NOT NULL,
           Name TEXT NOT NULL,
           Department TEXT NULL,
+          Position TEXT NULL,
           HireDate TEXT NOT NULL,
           Source TEXT NOT NULL,
           Status TEXT NOT NULL,
@@ -263,6 +264,7 @@ await using (var scope = app.Services.CreateAsyncScope())
           EmployeeNumber TEXT NOT NULL,
           Name TEXT NOT NULL,
           Department TEXT NULL,
+          Position TEXT NULL,
           TerminationDate TEXT NOT NULL,
           SourceDatabaseDate TEXT NOT NULL,
           SyncedAtUtc TEXT NOT NULL
@@ -270,6 +272,24 @@ await using (var scope = app.Services.CreateAsyncScope())
         CREATE UNIQUE INDEX IF NOT EXISTS IX_TerminationEmployees_EmployeeNumber_TerminationDate ON TerminationEmployees (EmployeeNumber,TerminationDate);
         CREATE INDEX IF NOT EXISTS IX_TerminationEmployees_TerminationDate ON TerminationEmployees (TerminationDate);
         """);
+    var settingsConnection=settingsDb.Database.GetDbConnection();
+    if(settingsConnection.State!=System.Data.ConnectionState.Open)await settingsConnection.OpenAsync();
+    foreach(var table in new[]{"HireEmployees","TerminationEmployees"})
+    {
+        var columns=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using(var schema=settingsConnection.CreateCommand())
+        {
+            schema.CommandText=$"PRAGMA table_info('{table}')";
+            await using var reader=await schema.ExecuteReaderAsync();
+            while(await reader.ReadAsync())columns.Add(reader.GetString(1));
+        }
+        if(!columns.Contains("Position"))
+        {
+            await using var alter=settingsConnection.CreateCommand();
+            alter.CommandText=$"ALTER TABLE {table} ADD COLUMN Position TEXT NULL";
+            await alter.ExecuteNonQueryAsync();
+        }
+    }
     var settings=scope.ServiceProvider.GetRequiredService<EmployeeColumnSettingsService>();
     await settings.EnsureSeededAsync();
     var salaryPositions=scope.ServiceProvider.GetRequiredService<SalaryPositionAxisSettingsService>();
