@@ -101,6 +101,7 @@ async function loadPersonnelMovements(){
   }
 }
 function renderPersonnelMovements(){
+  resetMovementTransition();
   const rows=movementMode==='hires'?(movementData.hires||[]):(movementData.terminations||[]);
   $('hireMovementCount').textContent=(movementData.hires||[]).length;
   $('terminationMovementCount').textContent=(movementData.terminations||[]).length;
@@ -113,25 +114,20 @@ function renderPersonnelMovements(){
   $('movementList').innerHTML=rows.length?rows.map(item=>`<div class="movement-row ${item.canDelete?'is-scheduled':''}"><span>${item.date.slice(0,10).replaceAll('-','.')}</span><strong title="${esc(item.name)}">${esc(item.name)}${item.type==='입사예정자'?'<small class="movement-type">입사예정자</small>':''}</strong><span title="${esc(item.department||'-')}">${esc(item.department||'-')}</span><span title="${esc(item.position||'-')}">${esc(item.position||'-')}</span>${item.canDelete&&canEdit?`<button class="movement-delete" type="button" data-id="${item.id}" aria-label="${esc(item.name)} 입사예정 취소">×</button>`:''}</div>`).join(''):'<div class="movement-empty">해당 기간의 인원이 없습니다.</div>';
   $('movementList').querySelectorAll('.movement-delete').forEach(button=>button.onclick=()=>deleteScheduledHire(Number(button.dataset.id)));
 }
-let movementTransitionVersion=0,movementTransitionTarget='hires',movementLockedUntil=0,movementUnlockTimer;
-function lockMovementNavigation(){
-  movementLockedUntil=Date.now()+1300;
-  clearTimeout(movementUnlockTimer);
-  [$('hireMovementTab'),$('terminationMovementTab')].forEach(button=>button.disabled=true);
-  movementUnlockTimer=setTimeout(()=>{
-    if(Date.now()>=movementLockedUntil)
-      [$('hireMovementTab'),$('terminationMovementTab')].forEach(button=>button.disabled=false);
-  },1300);
+let movementTransitionVersion=0,movementTransitionTarget='hires';
+function resetMovementTransition(){
+  const list=$('movementList');
+  list.getAnimations().forEach(animation=>animation.cancel());
+  list.style.removeProperty('opacity');
+  list.style.removeProperty('transform');
 }
 async function switchMovementMode(nextMode){
-  if(nextMode===movementTransitionTarget||Date.now()<movementLockedUntil)return;
-  lockMovementNavigation();
+  if(nextMode===movementTransitionTarget)return;
   const list=$('movementList'),version=++movementTransitionVersion,direction=nextMode==='terminations'?1:-1;
   movementTransitionTarget=nextMode;
-  list.getAnimations().forEach(animation=>animation.cancel());
-  list.style.removeProperty('opacity');list.style.removeProperty('transform');
-  if(nextMode===movementMode)return;
-  const reduceMotion=false;
+  resetMovementTransition();
+  if(nextMode===movementMode){movementTransitionTarget=movementMode;return;}
+  const reduceMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   try{
     if(!reduceMotion)await list.animate(
       [{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*14}px)`}],
@@ -147,8 +143,7 @@ async function switchMovementMode(nextMode){
     if(version===movementTransitionVersion&&error?.name!=='AbortError')console.warn('입·퇴사자 전환이 중단되었습니다.',error);
   }finally{
     if(version===movementTransitionVersion){
-      list.getAnimations().forEach(animation=>animation.cancel());
-      list.style.removeProperty('opacity');list.style.removeProperty('transform');
+      resetMovementTransition();
       movementTransitionTarget=movementMode;
     }
   }
@@ -278,16 +273,7 @@ function renderTenureDetail(){
   if(tenureDetailIndex===1)ageTenureScatter(detailData.ageTenurePoints||[]);
   else detailVerticalBars(detailData.tenureGroups||[]);
 }
-let salaryDetailTransitioning=false,salaryDetailTransitionVersion=0,salaryDetailLockedUntil=0,salaryDetailUnlockTimer;
-function lockSalaryDetailNavigation(){
-  salaryDetailLockedUntil=Date.now()+1300;
-  clearTimeout(salaryDetailUnlockTimer);
-  [$('salaryDetailPrev'),$('salaryDetailNext')].forEach(button=>button.disabled=true);
-  salaryDetailUnlockTimer=setTimeout(()=>{
-    if(Date.now()>=salaryDetailLockedUntil)
-      [$('salaryDetailPrev'),$('salaryDetailNext')].forEach(button=>button.disabled=false);
-  },1300);
-}
+let salaryDetailTransitionVersion=0;
 function resetSalaryDetailTransition(){
   salaryDetailTransitionVersion++;
   const chart=$('detailChart');
@@ -295,29 +281,15 @@ function resetSalaryDetailTransition(){
   chart.classList.remove('is-transitioning');
   chart.style.removeProperty('opacity');
   chart.style.removeProperty('transform');
-  salaryDetailTransitioning=false;
 }
-async function changeSalaryDetail(direction){
-  if(salaryDetailTransitioning||Date.now()<salaryDetailLockedUntil)return;
-  lockSalaryDetailNavigation();
-  const chart=$('detailChart'),reduceMotion=false;
-  const transitionVersion=++salaryDetailTransitionVersion;
-  salaryDetailTransitioning=true;chart.classList.add('is-transitioning');
-  try{
-    if(!reduceMotion)await chart.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:`translateX(${-direction*22}px)`}],{duration:150,easing:'ease-in',fill:'forwards'}).finished;
-    if(transitionVersion!==salaryDetailTransitionVersion)return;
-    if(detailSwitchMode==='tenure'){
-      tenureDetailIndex=(tenureDetailIndex+direction+2)%2;
-      renderTenureDetail();
-    }else{
-      salaryDetailIndex=(salaryDetailIndex+direction+3)%3;
-      renderSalaryDetail();
-    }
-    if(!reduceMotion)await chart.animate([{opacity:0,transform:`translateX(${direction*22}px)`},{opacity:1,transform:'translateX(0)'}],{duration:220,easing:'cubic-bezier(.2,.75,.25,1)',fill:'forwards'}).finished;
-  }catch(error){
-    if(transitionVersion===salaryDetailTransitionVersion&&error?.name!=='AbortError')console.warn('상세 그래프 전환이 중단되었습니다.',error);
-  }finally{
-    if(transitionVersion===salaryDetailTransitionVersion)resetSalaryDetailTransition();
+function changeSalaryDetail(direction){
+  resetSalaryDetailTransition();
+  if(detailSwitchMode==='tenure'){
+    tenureDetailIndex=(tenureDetailIndex+direction+2)%2;
+    renderTenureDetail();
+  }else{
+    salaryDetailIndex=(salaryDetailIndex+direction+3)%3;
+    renderSalaryDetail();
   }
 }
 function salaryPositionBandChart(rows){

@@ -65,58 +65,11 @@ function renderSummary(x){
   $('dartLink').href=x.receiptNumber?`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${encodeURIComponent(x.receiptNumber)}`:'https://dart.fss.or.kr/';
 }
 
-function renderChart(rows){
-  $('financeChartTitle').textContent=mode==='annual'?'연도별 매출·영업이익 추이':`${$('businessYearSelect').value}년 분기별 누적 추이`;
-  if(!rows.length){$('financeChart').innerHTML='<div class="finance-empty">표시할 데이터가 없습니다.</div>';return;}
-  const width=840,height=285,left=62,right=22,top=18,bottom=38,plotW=width-left-right,plotH=height-top-bottom;
-  const values=rows.flatMap(x=>[(x.revenue||0)/100000000,(x.operatingIncome||0)/100000000]);
-  let min=Math.min(0,...values),max=Math.max(0,...values);if(min===max)max=min+1;
-  const y=v=>top+(max-v)/(max-min)*plotH,x=i=>left+(rows.length===1?plotW/2:i*plotW/(rows.length-1));
-  const ticks=Array.from({length:5},(_,i)=>max-(max-min)*i/4);
-  const path=key=>rows.map((r,i)=>`${i?'L':'M'} ${x(i)} ${y((r[key]||0)/100000000)}`).join(' ');
-  const points=(key,color)=>rows.map((r,i)=>`<circle cx="${x(i)}" cy="${y((r[key]||0)/100000000)}" r="4.5" fill="${color}"><title>${label(r)} ${key==='revenue'?'매출액':'영업이익'} ${money(r[key])}</title></circle>`).join('');
-  $('financeChart').innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="매출액과 영업이익 추이 그래프">
-    ${ticks.map(v=>`<line x1="${left}" y1="${y(v)}" x2="${width-right}" y2="${y(v)}" stroke="#e8eef5"/><text x="${left-10}" y="${y(v)+4}" text-anchor="end">${formatAxis(v)}</text>`).join('')}
-    <line x1="${left}" y1="${y(0)}" x2="${width-right}" y2="${y(0)}" stroke="#b8c5d4"/>
-    <line class="chart-hover-line" x1="${left}" y1="${top}" x2="${left}" y2="${height-bottom}" visibility="hidden"/>
-    <path d="${path('revenue')}" fill="none" stroke="#3978f6" stroke-width="3"/><path d="${path('operatingIncome')}" fill="none" stroke="#35b7ca" stroke-width="3"/>
-    ${points('revenue','#3978f6')}${points('operatingIncome','#35b7ca')}
-    ${rows.map((r,i)=>`<text x="${x(i)}" y="${height-10}" text-anchor="middle">${label(r)}</text>`).join('')}
-  </svg>`;
-  bindChartTooltip('financeChart',rows,[{name:'매출액',color:'#3978f6',value:r=>r.revenue,format:money},{name:'영업이익',color:'#35b7ca',value:r=>r.operatingIncome,format:money}],width,left,right);
-}
-
 function renderHrCharts(rows){
   const productivity=rows.map(x=>({...x,revenuePerEmployee:x.dartEmployeeCount&&x.revenue!=null?x.revenue/x.dartEmployeeCount/10000:null,averageSalary:x.dartAverageSalary==null?null:x.dartAverageSalary/10000}));
   const efficiency=rows.map(x=>({...x,laborCostRatio:x.dartSalaryTotal?ratio(x.dartSalaryTotal,x.revenue):null,laborRoi:x.dartSalaryTotal&&x.operatingIncome!=null?(x.operatingIncome+x.dartSalaryTotal)/x.dartSalaryTotal*100:null}));
   metricChart('productivityChart',productivity,[{key:'revenuePerEmployee',name:'인당 매출',color:'#3978f6'},{key:'averageSalary',name:'평균 급여',color:'#8b6fd6'}],'만원');
   metricChart('laborEfficiencyChart',efficiency,[{key:'laborCostRatio',name:'인건비 비율',color:'#f0a43c'},{key:'laborRoi',name:'인건비 투자수익률',color:'#38a47b'}],'%');
-}
-
-function metricChart(id,rows,series,unit){
-  const available=rows.flatMap(row=>series.map(s=>row[s.key])).filter(v=>v!=null&&Number.isFinite(v));
-  if(!available.length){$(id).innerHTML='<div class="finance-empty">공시 데이터가 없습니다.</div>';return;}
-  const width=620,height=245,left=58,right=58,top=14,bottom=34,plotW=width-left-right,plotH=height-top-bottom;
-  const scales=series.map(s=>{
-    const values=rows.map(row=>row[s.key]).filter(v=>v!=null&&Number.isFinite(v));
-    if(!values.length)return{y:()=>top+plotH/2,ticks:[1,.75,.5,.25,0]};
-    let min=Math.min(0,...values),max=Math.max(0,...values);if(min===max)max=min+1;
-    return{y:v=>top+(max-v)/(max-min)*plotH,ticks:Array.from({length:5},(_,i)=>max-(max-min)*i/4)};
-  });
-  const x=i=>left+(rows.length===1?plotW/2:i*plotW/(rows.length-1));
-  const drawSeries=(s,seriesIndex)=>{
-    const y=scales[seriesIndex].y,valid=rows.map((row,i)=>({value:row[s.key],i,row})).filter(p=>p.value!=null&&Number.isFinite(p.value));
-    if(!valid.length)return'';
-    const path=valid.map((p,index)=>`${index?'L':'M'} ${x(p.i)} ${y(p.value)}`).join(' ');
-    return `<path d="${path}" fill="none" stroke="${s.color}" stroke-width="3"/>${valid.map(p=>`<circle cx="${x(p.i)}" cy="${y(p.value)}" r="4" fill="${s.color}"><title>${label(p.row)} ${s.name} ${number.format(Math.round(p.value*10)/10)}${unit}</title></circle>`).join('')}`;
-  };
-  $(id).innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img">
-    ${scales[0].ticks.map(v=>`<line x1="${left}" y1="${scales[0].y(v)}" x2="${width-right}" y2="${scales[0].y(v)}" stroke="#e8eef5"/><text x="${left-9}" y="${scales[0].y(v)+4}" text-anchor="end" style="fill:${series[0].color}">${number.format(Math.round(v))}</text>`).join('')}
-    ${scales[1].ticks.map(v=>`<text x="${width-right+9}" y="${scales[1].y(v)+4}" text-anchor="start" style="fill:${series[1].color}">${number.format(Math.round(v))}</text>`).join('')}
-    <line class="chart-hover-line" x1="${left}" y1="${top}" x2="${left}" y2="${height-bottom}" visibility="hidden"/>
-    ${series.map(drawSeries).join('')}${rows.map((r,i)=>`<text x="${x(i)}" y="${height-8}" text-anchor="middle">${label(r)}</text>`).join('')}
-  </svg>`;
-  bindChartTooltip(id,rows,series.map(s=>({name:s.name,color:s.color,value:r=>r[s.key],format:v=>`${number.format(Math.round(v*10)/10)}${unit}`})),width,left,right);
 }
 
 function renderChart(rows){
