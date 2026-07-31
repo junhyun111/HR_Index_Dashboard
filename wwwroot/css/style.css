@@ -62,7 +62,7 @@ html.sidebar-is-collapsed .source-badge { display:none; }
 html.sidebar-is-collapsed .nav-item { justify-content:center; gap:0; padding-right:10px; padding-left:10px; font-size:0; }
 html.sidebar-is-collapsed .nav-icon { width:22px; font-size:16px; }
 
-main { min-width: 0; padding: 32px 36px 48px; }
+main { min-width: 0; min-height:100vh; display:flex; flex-direction:column; padding: 32px 36px 48px; }
 .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
 h1 { margin: 0; font-size: 26px; letter-spacing: -.04em; }
 .home-title { color: inherit; text-decoration: none; }
@@ -433,6 +433,23 @@ tbody tr:hover { background: #f7faff; }
 .load-state h2 { margin: 0 0 8px; font-size: 18px; }
 .load-state p { max-width: 540px; margin: 0 auto 18px; color: var(--muted); font-size: 13px; line-height: 1.7; }
 
+.app-footer {
+  min-height:150px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:32px;
+  margin:56px -36px -48px;
+  padding:34px 44px;
+  border-top:1px solid #38404a;
+  color:#727983;
+  background:#24272b;
+}
+.app-footer-copy { display:flex; flex-direction:column; gap:13px; line-height:1.5; }
+.app-footer-copy strong { color:#a7adb5; font-size:13px; font-weight:700; letter-spacing:.01em; }
+.app-footer-copy span { font-size:11px; }
+.app-footer img { display:block; width:174px; height:auto; opacity:.82; }
+
 @media (max-width: 1120px) {
   .grid { grid-template-columns: 1fr 1fr; }
   .chart-department { grid-column: 1 / -1; grid-row: auto; }
@@ -464,6 +481,8 @@ tbody tr:hover { background: #f7faff; }
   .import-status { width: 100%; text-align: right; }
   .pagination { align-items: flex-start; flex-direction: column; }
   .page-controls { width: 100%; flex-wrap: wrap; justify-content: flex-start; }
+  .app-footer { min-height:132px; margin:42px -15px -36px; padding:28px 22px; }
+  .app-footer img { width:145px; }
 }
 @media (max-width: 460px) {
   .kpis { grid-template-columns: 1fr; }
@@ -471,6 +490,7 @@ tbody tr:hover { background: #f7faff; }
   .date-filter, .filters .search { grid-column: auto; }
   .employee-form-grid { grid-template-columns: 1fr; }
   .employee-profile-grid { grid-template-columns:1fr; }
+  .app-footer { align-items:flex-start; flex-direction:column-reverse; gap:22px; }
 }
 
 html[data-theme="dark"] {
