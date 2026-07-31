@@ -29,14 +29,14 @@ public sealed class EmployeeDatabaseRetentionService(
         var now=DateTimeOffset.UtcNow;
         foreach(var item in deleted)
         {
-            logger.LogInformation("5년 보존기간이 지난 사원 DB를 삭제했습니다. File={FileName}",item.FileName);
+            logger.LogInformation("3년 보존기간이 지난 사원 DB를 삭제했습니다. File={FileName}",item.FileName);
             settingsDb.EmployeeDatabaseChanges.Add(new EmployeeDatabaseChange
             {
                 OccurredAtUtc=now,
                 UserName="시스템",
                 DatabaseDate=item.DatabaseDate,
                 Action="보존기간 만료 삭제",
-                Detail=$"{item.FileName} · 5년 보존기간 만료"
+                Detail=$"{item.FileName} · 3년 보존기간 만료"
             });
         }
         await settingsDb.SaveChangesAsync(ct);

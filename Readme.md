@@ -31,6 +31,8 @@ dotnet run
 - `GET /api/personnel-movements`: 최근 30일 입사자·향후 30일 퇴사예정자 조회
 - `POST /api/personnel-movements/hires`: 입사예정자 등록
 - `DELETE /api/personnel-movements/hires/{id}`: 입사예정자 등록 취소
+
+퇴사일이 지난 직원은 애플리케이션 시작 시 및 매일 자정(한국 시간)에 당일 사원 DB에서 자동 삭제됩니다. 퇴사일 당일까지는 사원 DB에 유지되며, 과거 날짜별 사원 DB는 이력 조회를 위해 유지됩니다.
 - `GET /api/employees/export`: 직원 데이터를 Excel `.xlsx`로 내려받기
 - `POST /api/employees/import`: 수정된 `.csv`를 검증한 뒤 직원 추가/수정
 - `POST /api/employees/paste`: Excel에서 복사한 탭 구분 표를 검증한 뒤 직원 추가/수정
@@ -53,6 +55,6 @@ DRM 환경에서는 CSV를 Excel로 연 뒤 머리글을 포함한 표 전체를
 
 기존 `App_Data` 최상위 경로에 있는 `employeeYYMMDD.db` 파일은 애플리케이션 시작 시 `App_Data/employee-daily` 폴더로 자동 이전됩니다.
 
-일별 사원 DB는 기준일로부터 5년간 보관됩니다. 애플리케이션 시작 시와 이후 24시간마다 `App_Data/employee-daily`를 확인하여 5년이 지난 DB와 SQLite 보조 파일을 자동 삭제하고, 삭제 결과를 관리자용 DB 업데이트 이력에 기록합니다.
+일별 사원 DB는 기준일로부터 3년간 보관됩니다. 애플리케이션 시작 시와 이후 24시간마다 `App_Data/employee-daily`를 확인하여 3년이 지난 DB와 SQLite 보조 파일을 자동 삭제하고, 삭제 결과를 관리자용 DB 업데이트 이력에 기록합니다.
 
 애플리케이션이 실행 중이면 매일 한국시간 00시에 전날 사원 DB를 당일 DB로 자동 저장합니다. 서버 재시작 등으로 실행 시각을 놓친 경우에는 시작할 때 누락된 날짜 DB를 최신 정상 DB 기준으로 보완하며, 자동 저장된 DB는 화면에 `최종 수정: 자동업데이트 된 DB입니다`로 표시됩니다.

@@ -1,5 +1,6 @@
 using HRDashboard.Data;
 using HRDashboard.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace HRDashboard.Services;
 
@@ -43,6 +44,27 @@ public sealed class DailyEmployeeDatabaseUpdateService(
 
             var employeeDb=scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await databases.MigrateExistingDatabaseAsync(employeeDb,ct);
+            var terminated=await employeeDb.Employees
+                .Where(x=>x.TerminationDate!=null&&x.TerminationDate.Value.Date<today)
+                .ExecuteDeleteAsync(ct);
+            if(terminated>0)
+            {
+                var state=await employeeDb.EmployeeDataStates.FindAsync([1],ct);
+                if(state==null)
+                    employeeDb.EmployeeDataStates.Add(new EmployeeDataState { Id=1,UpdatedDate=today,LastModifiedAt=DateTimeOffset.UtcNow });
+                else
+                    state.LastModifiedAt=DateTimeOffset.UtcNow;
+                await employeeDb.SaveChangesAsync(ct);
+                logger.LogInformation("퇴사일이 지난 직원 {Count}명을 당일 사원 DB에서 자동 삭제했습니다. Date={Date}",terminated,today);
+                settingsDb.EmployeeDatabaseChanges.Add(new EmployeeDatabaseChange
+                {
+                    OccurredAtUtc=DateTimeOffset.UtcNow,
+                    UserName="시스템",
+                    DatabaseDate=today,
+                    Action="퇴사자 자동 삭제",
+                    Detail=$"퇴사일이 지난 직원 {terminated}명을 사원 DB에서 자동 삭제"
+                });
+            }
             var movements=scope.ServiceProvider.GetRequiredService<EmployeeMovementService>();
             var applied=await movements.ApplyDueScheduledHiresAsync(employeeDb,today,ct);
             if(applied>0)

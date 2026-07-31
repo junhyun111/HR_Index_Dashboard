@@ -281,7 +281,7 @@ public sealed class DailyEmployeeDatabaseService(IWebHostEnvironment environment
 
     public IReadOnlyList<EmployeeDatabaseCleanupResult> DeleteExpiredDatabases(DateTime today)
     {
-        var cutoff=today.Date.AddYears(-5);
+        var cutoff=today.Date.AddYears(-3);
         var results=new List<EmployeeDatabaseCleanupResult>();
         foreach(var path in Directory.GetFiles(DatabaseDirectory(),"employee??????.db",SearchOption.TopDirectoryOnly))
         {
